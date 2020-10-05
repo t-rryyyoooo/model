@@ -1,6 +1,10 @@
 import torch
 from torch import nn
-from .utils import cropping3D
+if __name__ == "__main__":
+    from utils import cropping3D
+else:
+    from .utils import cropping3D
+
 from torchsummary import summary
 
 class DoubleConvolution(nn.Module):
@@ -79,6 +83,8 @@ class UNetModel(nn.Module):
         super(UNetModel, self).__init__()
         self.use_dropout = use_dropout
 
+        self.input_size = []
+
         self.contracts = []
         self.expands = []
 
@@ -114,6 +120,11 @@ class UNetModel(nn.Module):
         self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
+        if not self.input_size:
+            input_size = []
+            input_size.append(x.size())
+            self.input_size = input_size
+
         conv_results = []
         for contract in self.contracts:
             x, conv_result = contract(x)
@@ -145,5 +156,6 @@ if __name__ == "__main__":
     print("input: ", net_shape)
 
     output = model(dummy_img)
-    summary(model, net_shape)
+    #summary(model, net_shape)
+    print(model.input_size)
     print('output:', output.size())
