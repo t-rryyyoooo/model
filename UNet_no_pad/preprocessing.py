@@ -57,7 +57,8 @@ class GetArrayFromImage(object):
         label_array = sitk.GetArrayFromImage(label).astype(int)
 
         if image.GetDimension() != 4:
-            image_array = image_array[..., np.newaxis]
+            #image_array = image_array[..., np.newaxis]
+            image_array = image_array[np.newaxis, ...]
 
         #image_array = image_array.transpose((3, 2, 0, 1))
         #label_array = label_array.transpose((2, 0, 1))
