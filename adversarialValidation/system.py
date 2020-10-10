@@ -48,27 +48,16 @@ class UNetSystem(pl.LightningModule):
 
         dice = self.DICE.compute(label, pred_argmax)
         loss = self.loss(pred, label_onehot)
-        
-        return {"loss" : loss, "dice" : dice}
-
-    def training_epoch_end(self, outputs):
-        avg_loss = torch.stack([x["loss"] for x in outputs]).mean()
-        avg_dice = torch.stack([x["dice"] for x in outputs]).mean()
-
-        self.checkpoint(avg_loss.item(), self.model)
 
         tensorboard_logs = {
-                "loss" : avg_loss,
-                "dice" : avg_dice, 
+                "train_loss" : loss, 
+                "dice" : dice
                 }
         progress_bar = {
-                "loss" : avg_loss,
-                "dice" : avg_dice
+                "dice" : dice
                 }
-
-
-        return {"avg_loss" : avg_loss, "log" : tensorboard_logs, "progress_bar" : progress_bar}
-
+        
+        return {"loss" : loss, "log" : tensorboard_logs, "progress_bar" : progress_bar}
 
     def validation_step(self, batch, batch_idx):
         """
@@ -88,11 +77,20 @@ class UNetSystem(pl.LightningModule):
         dice = self.DICE.compute(label, pred_argmax)
         loss = self.loss(pred, label_onehot)
 
-        return {"val_loss" : loss, "val_dice" : dice}
+        tensorboard_logs = {
+                "val_loss" : loss, 
+                "val_dice" : dice, 
+                }
+        progress_bar= {
+                "val_loss" : loss, 
+                "val_dice" : dice
+                }
+ 
+        return {"val_loss" : loss, "log" : tensorboard_logs}#, "progress_bar" : progress_bar}
 
     def validation_epoch_end(self, outputs):
         avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
-        avg_dice = torch.stack([x["val_dice"] for x in outputs]).mean()
+        avg_dice = torch.stack([x["log"]["val_dice"] for x in outputs]).mean()
 
         self.checkpoint(avg_loss.item(), self.model)
 
