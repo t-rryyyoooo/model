@@ -11,13 +11,13 @@ from .utils import DICE
 from .loss import WeightedCategoricalCrossEntropy
 
 class UNetSystem(pl.LightningModule):
-    def __init__(self, dataset_path, criteria, in_channel, num_class, learning_rate, batch_size, checkpoint, num_workers):
+    def __init__(self, dataset_path, criteria, in_channel, num_class, learning_rate, batch_size, checkpoint, num_workers, dropout=0.5):
         super(UNetSystem, self).__init__()
         use_cuda = torch.cuda.is_available() and True
         self.device = torch.device("cuda" if use_cuda else "cpu")
         self.dataset_path = dataset_path
         self.num_class = num_class
-        self.model = UNetModel(in_channel, self.num_class).to(self.device, dtype=torch.float)
+        self.model = UNetModel(in_channel, self.num_class, dropout=dropout).to(self.device, dtype=torch.float)
         self.criteria = criteria
         self.batch_size = batch_size
         self.learning_rate = learning_rate
@@ -32,11 +32,15 @@ class UNetSystem(pl.LightningModule):
         return x
 
     def training_step(self, batch, batch_idx):
+        """
+        label : not onehot 
+        """
         image, label = batch
         image = image.to(self.device, dtype=torch.float)
         label = label.to(self.device, dtype=torch.long)
 
         pred = self.forward(image).to(self.device)
+        
 
         """ Onehot for loss. """
         pred_argmax = pred.argmax(dim=1)
@@ -44,24 +48,38 @@ class UNetSystem(pl.LightningModule):
 
         dice = self.DICE.compute(label, pred_argmax)
         loss = self.loss(pred, label_onehot)
+        
+        return {"loss" : loss, "dice" : dice}
 
+    def training_epoch_end(self, outputs):
+        avg_loss = torch.stack([x["loss"] for x in outputs]).mean()
+        avg_dice = torch.stack([x["dice"] for x in outputs]).mean()
+
+        self.checkpoint(avg_loss.item(), self.model)
 
         tensorboard_logs = {
-                "train_loss" : loss, 
-                "dice" : dice
+                "loss" : avg_loss,
+                "dice" : avg_dice, 
                 }
         progress_bar = {
-                "dice" : dice
+                "loss" : avg_loss,
+                "dice" : avg_dice
                 }
-        
-        return {"loss" : loss, "log" : tensorboard_logs, "progress_bar" : progress_bar}
+
+
+        return {"avg_loss" : avg_loss, "log" : tensorboard_logs, "progress_bar" : progress_bar}
+
 
     def validation_step(self, batch, batch_idx):
+        """
+        label : not onehot 
+        """
         image, label = batch
         image = image.to(self.device, dtype=torch.float)
         label = label.to(self.device, dtype=torch.long)
 
         pred = self.forward(image).to(self.device)
+        
 
         """ Onehot for loss. """
         pred_argmax = pred.argmax(dim=1)
@@ -70,20 +88,11 @@ class UNetSystem(pl.LightningModule):
         dice = self.DICE.compute(label, pred_argmax)
         loss = self.loss(pred, label_onehot)
 
-        tensorboard_logs = {
-                "val_loss" : loss, 
-                "val_dice" : dice, 
-                }
-        progress_bar= {
-                "val_loss" : loss, 
-                "val_dice" : dice
-                }
- 
-        return {"val_loss" : loss, "log" : tensorboard_logs}#, "progress_bar" : progress_bar}
+        return {"val_loss" : loss, "val_dice" : dice}
 
     def validation_epoch_end(self, outputs):
         avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
-        avg_dice = torch.stack([x["log"]["val_dice"] for x in outputs]).mean()
+        avg_dice = torch.stack([x["val_dice"] for x in outputs]).mean()
 
         self.checkpoint(avg_loss.item(), self.model)
 
@@ -92,6 +101,7 @@ class UNetSystem(pl.LightningModule):
                 "val_dice" : avg_dice, 
                 }
         progress_bar = {
+                "val_loss" : avg_loss,
                 "val_dice" : avg_dice
                 }
 
