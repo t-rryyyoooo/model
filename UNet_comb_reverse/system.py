@@ -11,14 +11,21 @@ from .utils import DICE
 from .loss import WeightedCategoricalCrossEntropy
 
 class UNetSystem(pl.LightningModule):
-    def __init__(self, image_path_list, label_path, criteria, in_channel_main, in_channel_final, num_class, learning_rate, batch_size, checkpoint, num_workers):
+    def __init__(self, image_path_list, label_path, criteria, in_channel_main, in_channel_final, num_class, learning_rate, batch_size, checkpoint, num_workers, transfer_org_model=None, dropout=0.5):
         super(UNetSystem, self).__init__()
         use_cuda = torch.cuda.is_available() and True
         self.device = torch.device("cuda" if use_cuda else "cpu")
         self.image_path_list = image_path_list
         self.label_path = label_path
         self.num_class = num_class
-        self.model = UNetCombReverseModel(in_channel_main, in_channel_final, self.num_class).to(self.device, dtype=torch.float)
+        self.model = UNetCombReverseModel(
+                in_channel_main = in_channel_main, 
+                in_channel_final = in_channel_final, 
+                nclasses = self.num_class,
+                dropout = dropout,
+                transfer_org_model = transfer_org_model
+                ).to(self.device, dtype=torch.float)
+
         self.criteria = criteria
         self.batch_size = batch_size
         self.learning_rate = learning_rate
@@ -35,7 +42,6 @@ class UNetSystem(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         images, label = batch
         images = [image.to(self.device, dtype=torch.float) for image in images]
-        print(torch.isnan(images[0]).any(), torch.isnan(images[1]).any())
         label = label.to(self.device, dtype=torch.long)
 
         pred = self.forward(*images).to(self.device)
