@@ -28,6 +28,10 @@ def separateData(image_path_list, label_path, criteria, phase):
 
             image_list = image_path.glob("image*")
             image_list = sorted(image_list)
+            if len(image_list) == 0:
+                image_list = image_path.glob("feature*")
+                image_list = sorted(image_list)
+
             image_lists.append(image_list)
 
         lab_path = Path(label_path) / ("case_" + number)

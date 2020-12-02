@@ -1,6 +1,7 @@
 import SimpleITK as sitk
 import numpy as np
 from random import randint
+import os
 if __name__ == "__main__":
     from utils import *
 else:
@@ -23,6 +24,43 @@ class ReadImage(object):
         label = sitk.ReadImage(label_file)
 
         return image, label
+
+class LoadNumpy(object):
+    def __call__(self, image_file, label_file):
+        image_array = np.load(image_file)
+        while image_array.ndim < 4:
+            image_array = image_array[np.newaxis, ...]
+
+        label_array = np.load(label_file)
+
+        return image_array_list, label_array
+
+class LoadMultipleData(object):
+    def __call__(self, image_file_list, label_file):
+        image_array_list = []
+        for image_file in image_file_list:
+            _, ext = os.path.splitext(image_file)
+            if ext == ".mha":
+                image = sitk.ReadImage(image_file)
+                image_array = sitk.GetArrayFromImage(image)
+            elif ext == ".npy":
+                image_array = np.load(image_file)
+
+            while image_array.ndim !=4:
+                image_array = image_array[np.newaxis, ...]
+
+            image_array_list.append(image_array)
+
+        _, ext = os.path.splitext(label_file)
+        if ext == ".mha":
+            label = sitk.ReadImage(label_file)
+            label_array = sitk.GetArrayFromImage(label)
+        elif ext == ".npy":
+            label_array = np.load(label_file)
+
+        return image_array_list, label_array
+
+
 
 class ReadImages(object):
     def __call__(self, image_file_list, label_file):

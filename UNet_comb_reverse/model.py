@@ -32,7 +32,6 @@ class UNetCombReverseModel(nn.Module):
         self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x, x_final):
-        print(self.org_model.contracts[0])
         x, conv_result_first = self.org_model.contracts[0](x)
 
         conv_results = []

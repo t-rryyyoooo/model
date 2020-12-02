@@ -7,11 +7,11 @@ class UNetTransform():
     def __init__(self):
         self.transforms = {
                 "train" : Compose([
-                    LoadNumpys(), 
+                    LoadMultipleData()
                     ]), 
 
                 "val" : Compose([
-                    LoadNumpys(), 
+                    LoadMultipleData()
                     ])
                 }
 

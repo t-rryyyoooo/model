@@ -3,7 +3,7 @@ from torch import nn
 if __name__ == "__main__":
     from model_part import CreateConvBlock, CreateUpConvBlock
 else:
-    from model_part import CreateConvBlock, CreateUpConvBlock
+    from .model_part import CreateConvBlock, CreateUpConvBlock
 
 from torchsummary import summary
 
