@@ -14,36 +14,41 @@ class UNetModel(nn.Module):
         self.contracts = []
         self.expands = []
 
-        # 512-512-8 -> 256-256-4
-        contract = CreateConvBlock(in_channel, 4, 8, n=2, use_bn=use_bn)
+        # 512-512-8 -> 256-256-4 
+        # ch: 1 -> 32 -> 64
+        o = 32
+        contract = CreateConvBlock(in_channel, o, o*2, n=2, use_bn=use_bn)
         self.contracts.append(contract)
 
         # 256-256-4 -> 128-128-2
-        contract = CreateConvBlock(8, 8, 16, n=2, use_bn=use_bn)
+        # ch: 64 -> 64-> 128
+        contract = CreateConvBlock(o*2, o*2, o*4, n=2, use_bn=use_bn)
         self.contracts.append(contract)
 
         #128-128-2 -> 64-64-1
-        contract = CreateConvBlock(16, 16, 32, n=2, use_bn=use_bn)
+        # ch: 128 -> 128 -> 256
+        contract = CreateConvBlock(o*4, o*4, o*8, n=2, use_bn=use_bn)
         self.contracts.append(contract)
 
         # 64-64-1 -> 32-32-1
-        contract = CreateConvBlock(32, 32, 64, n=2, use_bn=use_bn, pooling_size=(1, 2, 2))
+        contract = CreateConvBlock(o*8, o*8, o*8, n=2, use_bn=use_bn, pooling_size=(1, 2, 2))
         self.contracts.append(contract)
 
         #32-32-1 -> 16-16-1
-        contract = CreateConvBlock(64, 64, 128, n=2, use_bn=use_bn, pooling_size=(1, 2, 2))
+        contract = CreateConvBlock(o*8, o*8, o*8, n=2, use_bn=use_bn, pooling_size=(1, 2, 2))
         self.contracts.append(contract)
 
         # 16-16-1 -> 8-8-1
-        contract = CreateConvBlock(128, 128, 256, n=2, use_bn=use_bn, pooling_size=(1, 2, 2))
+        contract = CreateConvBlock(o*8, o*8, o*8, n=2, use_bn=use_bn, pooling_size=(1, 2, 2))
         self.contracts.append(contract)
 
         # 8-8-1 -> 4-4-1
-        contract = CreateConvBlock(256, 256, 512, n=2, use_bn=use_bn, pooling_size=(1, 2, 2))
+        contract = CreateConvBlock(o*8, o*8, o*8, n=2, use_bn=use_bn, pooling_size=(1, 2, 2))
         self.contracts.append(contract)
 
         # 4-4-1
-        self.lastContract = CreateConvBlock(512, 512, 1024, n=2, use_bn=use_bn, apply_pooling=False)
+        self.lastContract = CreateConvBlock(o*8, o*8, o*8, n=2, use_bn=use_bn, apply_pooling=False)
+
 
         self.contracts = nn.ModuleList(self.contracts)
 
@@ -51,36 +56,36 @@ class UNetModel(nn.Module):
             self.dropout = nn.Dropout(dropout)
 
         #4-4-1 -> 8-8-1
-        expand = CreateUpConvBlock(1024, 512, 512, 512, n=2, use_bn=use_bn, upsampling_size=(1, 2, 2))
+        expand = CreateUpConvBlock(o*8, o*8, o*8, o*8, n=2, use_bn=use_bn, upsampling_size=(1, 2, 2))
         self.expands.append(expand)
 
         # 8-8-1 -> 16-16-1
-        expand = CreateUpConvBlock(512, 256, 256, 256, n=2, use_bn=use_bn, upsampling_size=(1, 2, 2))
+        expand = CreateUpConvBlock(o*8, o*8, o*8, o*8, n=2, use_bn=use_bn, upsampling_size=(1, 2, 2))
         self.expands.append(expand)
 
         # 16-16-1 -> 32-32-1
-        expand = CreateUpConvBlock(256, 128, 128, 128, n=2, use_bn=use_bn, upsampling_size=(1, 2, 2))
+        expand = CreateUpConvBlock(o*8, o*8, o*8, o*8, n=2, use_bn=use_bn, upsampling_size=(1, 2, 2))
         self.expands.append(expand)
          
         # 32-32-1 -> 64-64-1
-        expand = CreateUpConvBlock(128, 64, 64, 64, n=2, use_bn=use_bn, upsampling_size=(1, 2, 2))
+        expand = CreateUpConvBlock(o*8, o*8, o*8, o*8, n=2, use_bn=use_bn, upsampling_size=(1, 2, 2))
         self.expands.append(expand)
 
         # 64-64-1 -> 128-128-32
-        expand = CreateUpConvBlock(64, 32, 32, 32, n=2, use_bn=use_bn)
+        expand = CreateUpConvBlock(o*8, o*8, o*8, o*8, n=2, use_bn=use_bn)
         self.expands.append(expand)
 
         # 128-128-2 -> 256-256-4
-        expand = CreateUpConvBlock(32, 16, 16, 16, n=2, use_bn=use_bn)
+        expand = CreateUpConvBlock(o*8, o*4, o*4, o*4, n=2, use_bn=use_bn)
         self.expands.append(expand)
 
         # 256-256-4 -> 512-512-8
-        expand = CreateUpConvBlock(16, 8, 8, 8, n=2, use_bn=use_bn)
+        expand = CreateUpConvBlock(o*4, o*2, o*2, o*2, n=2, use_bn=use_bn)
         self.expands.append(expand)
 
         self.expands = nn.ModuleList(self.expands)
 
-        self.segmentation = nn.Conv3d(8, nclasses, (1, 1, 1), stride=1, dilation=1, padding=(0, 0, 0))
+        self.segmentation = nn.Conv3d(o*2, nclasses, (1, 1, 1), stride=1, dilation=1, padding=(0, 0, 0))
 
         self.softmax = nn.Softmax(dim=1)
 
@@ -125,7 +130,7 @@ class UNetModel(nn.Module):
 
 if __name__ == "__main__":
     model=UNetModel(1 ,14)
-    net_shape = (2, 1, 512, 512, 8)
+    net_shape = (2, 1, 8, 512, 512)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     model.to(device)

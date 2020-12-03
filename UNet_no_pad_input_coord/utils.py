@@ -25,13 +25,16 @@ def separateData(dataset_path, criteria, phase):
         data_path = Path(dataset_path) / ("case_" + number) 
 
         image_list = data_path.glob("image*")
+        feature_list = data_path.glob("coordinate*")
         label_list = data_path.glob("label*")
         
         image_list = sorted(image_list)
+        feature_list = sorted(feature_list)
         label_list = sorted(label_list)
 
-        for img, lab in zip(image_list, label_list):
-            dataset.append((str(img), str(lab)))
+        assert len(image_list) == len(feature_list) == len(label_list)
+        for img, fea, lab in zip(image_list, feature_list, label_list):
+            dataset.append(((str(img), str(fea)), str(lab)))
 
     return dataset
 

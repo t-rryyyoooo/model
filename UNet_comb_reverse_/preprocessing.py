@@ -1,8 +1,11 @@
 import SimpleITK as sitk
-import os
 import numpy as np
-from .utils import *
 from random import randint
+if __name__ == "__main__":
+    from utils import *
+else:
+    from .utils import *
+
 
 class Compose(object):
     def __init__(self, transforms):
@@ -14,48 +17,53 @@ class Compose(object):
 
         return image, label
 
-class LoadMultipleData(object):
-    def __call__(self, image_file_list, label_file):
-        image_array_list = []
-        for image_file in image_file_list:
-            _, ext = os.path.splitext(image_file)
-            if ext == ".mha":
-                image = sitk.ReadImage(image_file)
-                image_array = sitk.GetArrayFromImage(image)
-            elif ext == ".npy":
-                image_array = np.load(image_file)
-
-            while image_array.ndim !=4:
-                image_array = image_array[np.newaxis, ...]
-
-            image_array_list.append(image_array)
-
-        _, ext = os.path.splitext(label_file)
-        if ext == ".mha":
-            label = sitk.ReadImage(label_file)
-            label_array = sitk.GetArrayFromImage(label)
-        elif ext == ".npy":
-            label_array = np.load(label_file)
-
-        return image_array_list, label_array
-
-
-class LoadNumpys(object):
-    def __call__(self, image_file, label_file):
-        image_array = np.load(image_file)
-        if image_array.ndim != 4:
-            image_array = image_array[np.newaxis, ...]
-
-        label_array = np.load(label_file)
-
-        return image_array, label_array
-
 class ReadImage(object):
     def __call__(self, image_file, label_file):
         image = sitk.ReadImage(image_file)
         label = sitk.ReadImage(label_file)
 
         return image, label
+
+class ReadImages(object):
+    def __call__(self, image_file_list, label_file):
+        image_list = []
+        for image_file in image_file_list:
+            image = sitk.ReadImage(image_file)
+            image_list.append(image)
+
+        label_array = np.load(label_file)
+
+        return image_list, label_array
+
+class GetArrayFromImages(object):
+    def __init__(self, classes):
+        self.classes = classes
+
+    def __call__(self, image_list, label):
+        image_array_list = []
+        for image in image_list:
+            image_array = sitk.GetArrayFromImage(image)
+
+            if image.GetDimension() != 4:
+                image_array = image_array[np.newaxis, ...]
+            image_array_list.append(image_array)
+
+        label_array = sitk.GetArrayFromImage(label).astype(int)
+        
+        return image_array_list, label_arry
+
+class LoadNumpys(object):
+    def __call__(self, image_file_list, label_file):
+        image_array_list = []
+        for image_file in image_file_list:
+            image_array = np.load(image_file)
+            if image_array.ndim != 4:
+                image_array = image_array[np.newaxis, ...]
+            image_array_list.append(image_array)
+
+        label_array = np.load(label_file)
+
+        return image_array_list, label_array
 
 class AffineTransform(object):
     def __init__(self, translate_range, rotate_range, shear_range, scale_range, bspline=None):

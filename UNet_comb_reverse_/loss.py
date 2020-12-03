@@ -23,5 +23,3 @@ class WeightedCategoricalCrossEntropy(nn.Module):
         output = output.mean().to(self.device)
 
         return output
-
-

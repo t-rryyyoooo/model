@@ -3,7 +3,7 @@ import pytorch_lightning as pl
 from pytorch_lightning import Trainer
 import torch
 from torch import nn
-from .model import UNetModel
+from .model import UNetCombReverseModel
 from .dataset import UNetDataset
 from .transform import UNetTransform
 from torch.utils.data import DataLoader
@@ -11,13 +11,14 @@ from .utils import DICE
 from .loss import WeightedCategoricalCrossEntropy
 
 class UNetSystem(pl.LightningModule):
-    def __init__(self, dataset_path, criteria, in_channel, num_class, learning_rate, batch_size, checkpoint, num_workers, dropout=0.5):
+    def __init__(self, image_path_list, label_path, criteria, in_channel_main, in_channel_final, num_class, learning_rate, batch_size, checkpoint, num_workers):
         super(UNetSystem, self).__init__()
         use_cuda = torch.cuda.is_available() and True
         self.device = torch.device("cuda" if use_cuda else "cpu")
-        self.dataset_path = dataset_path
+        self.image_path_list = image_path_list
+        self.label_path = label_path
         self.num_class = num_class
-        self.model = UNetModel(in_channel, self.num_class, dropout=dropout).to(self.device, dtype=torch.float)
+        self.model = UNetCombReverseModel(in_channel_main, in_channel_final, self.num_class).to(self.device, dtype=torch.float)
         self.criteria = criteria
         self.batch_size = batch_size
         self.learning_rate = learning_rate
@@ -26,21 +27,18 @@ class UNetSystem(pl.LightningModule):
         self.DICE = DICE(self.num_class, self.device)
         self.loss = WeightedCategoricalCrossEntropy(device=self.device)
 
-    def forward(self, x):
-        x = self.model(x)
+    def forward(self, x, x_final):
+        x = self.model(x, x_final)
 
         return x
 
     def training_step(self, batch, batch_idx):
-        """
-        label : not onehot 
-        """
-        image, label = batch
-        image = image.to(self.device, dtype=torch.float)
+        images, label = batch
+        images = [image.to(self.device, dtype=torch.float) for image in images]
+        print(torch.isnan(images[0]).any(), torch.isnan(images[1]).any())
         label = label.to(self.device, dtype=torch.long)
 
-        pred = self.forward(image).to(self.device)
-        
+        pred = self.forward(*images).to(self.device)
 
         """ Onehot for loss. """
         pred_argmax = pred.argmax(dim=1)
@@ -48,38 +46,23 @@ class UNetSystem(pl.LightningModule):
 
         dice = self.DICE.compute(label, pred_argmax)
         loss = self.loss(pred, label_onehot)
-        
-        return {"loss" : loss, "dice" : dice}
-
-    def training_epoch_end(self, outputs):
-        avg_loss = torch.stack([x["loss"] for x in outputs]).mean()
-        avg_dice = torch.stack([x["dice"] for x in outputs]).mean()
-
-        self.checkpoint(avg_loss.item(), self.model)
 
         tensorboard_logs = {
-                "loss" : avg_loss,
-                "dice" : avg_dice, 
+                "train_loss" : loss, 
+                "dice" : dice
                 }
         progress_bar = {
-                "loss" : avg_loss,
-                "dice" : avg_dice
+                "dice" : dice
                 }
-
-
-        return {"avg_loss" : avg_loss, "log" : tensorboard_logs, "progress_bar" : progress_bar}
-
+        
+        return {"loss" : loss, "log" : tensorboard_logs, "progress_bar" : progress_bar}
 
     def validation_step(self, batch, batch_idx):
-        """
-        label : not onehot 
-        """
-        image, label = batch
-        image = image.to(self.device, dtype=torch.float)
+        images, label = batch
+        images = [image.to(self.device, dtype=torch.float) for image in images]
         label = label.to(self.device, dtype=torch.long)
 
-        pred = self.forward(image).to(self.device)
-        
+        pred = self.forward(*images).to(self.device)
 
         """ Onehot for loss. """
         pred_argmax = pred.argmax(dim=1)
@@ -88,11 +71,20 @@ class UNetSystem(pl.LightningModule):
         dice = self.DICE.compute(label, pred_argmax)
         loss = self.loss(pred, label_onehot)
 
-        return {"val_loss" : loss, "val_dice" : dice}
+        tensorboard_logs = {
+                "val_loss" : loss, 
+                "val_dice" : dice, 
+                }
+        progress_bar= {
+                "val_loss" : loss, 
+                "val_dice" : dice
+                }
+ 
+        return {"val_loss" : loss, "log" : tensorboard_logs}#, "progress_bar" : progress_bar}
 
     def validation_epoch_end(self, outputs):
         avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
-        avg_dice = torch.stack([x["val_dice"] for x in outputs]).mean()
+        avg_dice = torch.stack([x["log"]["val_dice"] for x in outputs]).mean()
 
         self.checkpoint(avg_loss.item(), self.model)
 
@@ -115,17 +107,12 @@ class UNetSystem(pl.LightningModule):
 
     @pl.data_loader
     def train_dataloader(self):
-        translate = 0.0
-        rotate = 0
-        shear = 0.0
-        scale = 0.0
-        batch_size = self.batch_size
-
         train_dataset = UNetDataset(
-                dataset_path = self.dataset_path, 
+                image_path_list = self.image_path_list,
+                label_path = self.label_path,
                 phase = "train", 
                 criteria = self.criteria,
-                transform = UNetTransform(self.num_class, translate, rotate, shear, scale)
+                transform = UNetTransform()
                 )
 
         train_loader = DataLoader(
@@ -140,10 +127,11 @@ class UNetSystem(pl.LightningModule):
     @pl.data_loader
     def val_dataloader(self):
         val_dataset = UNetDataset(
-                dataset_path = self.dataset_path, 
+                image_path_list = self.image_path_list,
+                label_path = self.label_path,
                 phase = "val", 
                 criteria = self.criteria,
-                transform = UNetTransform(self.num_class)
+                transform = UNetTransform()
                 )
 
         val_loader = DataLoader(

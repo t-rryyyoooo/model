@@ -11,12 +11,11 @@ from .utils import DICE
 from .loss import WeightedCategoricalCrossEntropy
 
 class UNetSystem(pl.LightningModule):
-    def __init__(self, image_path_list, label_path, criteria, in_channel_img, in_channel_coord, num_class, learning_rate, batch_size, checkpoint, num_workers, dropout=0.5):
+    def __init__(self, dataset_path, criteria, in_channel_img, in_channel_coord, num_class, learning_rate, batch_size, checkpoint, num_workers, dropout=0.5):
         super(UNetSystem, self).__init__()
         use_cuda = torch.cuda.is_available() and True
         self.device = torch.device("cuda" if use_cuda else "cpu")
-        self.image_path_list = image_path_list
-        self.label_path = label_path
+        self.dataset_path = dataset_path
         self.num_class = num_class
         self.model = UNetModel(in_channel_img, in_channel_coord, self.num_class, dropout=dropout).to(self.device, dtype=torch.float)
         self.criteria = criteria

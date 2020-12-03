@@ -19,22 +19,34 @@ def setMeta(to_image, ref_image, direction=None, origin=None, spacing=None):
 
     return to_image
 
-def separateData(dataset_path, criteria, phase): 
+def separateData(image_path_list, label_path, criteria, phase):
     dataset = []
     for number in criteria[phase]:
-        data_path = Path(dataset_path) / ("case_" + number) 
+        image_lists = []
+        for image_path in image_path_list:
+            image_path = Path(image_path) / ("case_" + number)
 
-        image_list = data_path.glob("image*")
-        label_list = data_path.glob("label*")
-        
-        image_list = sorted(image_list)
+            image_list = image_path.glob("image*")
+            image_list = sorted(image_list)
+            image_lists.append(image_list)
+
+        lab_path = Path(label_path) / ("case_" + number)
+        label_list = lab_path.glob("label*")
         label_list = sorted(label_list)
+        
+        length = len(label_list)
+        for image_list in image_lists:
+            assert length == len(image_list)
 
-        for img, lab in zip(image_list, label_list):
-            dataset.append((str(img), str(lab)))
+        img_lists = []
+        for image in zip(*image_lists):
+            image = [str(x) for x in image]
+            img_lists.append(image)
+
+        for imgs, lab in zip(img_lists, label_list):
+            dataset.append((imgs, str(lab)))
 
     return dataset
-
 
 def makeAffineParameters(image, translate, rotate, shear, scale):
     dimension = image.GetDimension()
@@ -81,7 +93,8 @@ class DICE():
         self.num_class = num_class
         self.device = device
         """
-        Required : not onehot
+        Required : not onehot (after argmax)
+        ex : [[0,1], [2,5],[10,11]]
         """
 
     def compute(self, true, pred):
