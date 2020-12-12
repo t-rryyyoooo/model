@@ -7,7 +7,7 @@ class UNetDataset(data.Dataset):
         self.transform = transform
         self.phase = phase
 
-        self.data_list = separateData(dataset_path, coord_first_path, coord_last_path, criteria, phase)
+        self.data_list = separateData(image_path, coord_first_path, coord_last_path, criteria, phase)
 
     def __len__(self):
         return len(self.data_list)
