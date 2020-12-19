@@ -2,6 +2,7 @@ import SimpleITK as sitk
 import numpy as np
 from pathlib import Path
 import torch
+import random
 
 def setMeta(to_image, ref_image, direction=None, origin=None, spacing=None):
     if direction is None:
@@ -38,9 +39,10 @@ def separateDataWithNonMask(dataset_mask_path, dataset_nonmask_path, criteria, p
 
     return dataset
 
-def separateData(dataset_path, criteria, phase): 
+def separateData(dataset_path, criteria, phase, rate=1.0): 
     dataset = []
-    for number in criteria[phase]:
+    random.shuffle(criteria[phase])
+    for number in criteria[phase][:int(len(criteria[phase]) * rate)]:
         data_path = Path(dataset_path) / ("case_" + number) 
 
         image_list = data_path.glob("image*")
@@ -49,6 +51,7 @@ def separateData(dataset_path, criteria, phase):
         image_list = sorted(image_list)
         label_list = sorted(label_list)
 
+        assert len(image_list) == len(label_list)
         for img, lab in zip(image_list, label_list):
             dataset.append((str(img), str(lab)))
 
