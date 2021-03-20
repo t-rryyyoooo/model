@@ -46,7 +46,8 @@ def separateData(dataset_path, criteria, phase, rate=1.0):
         data_path = Path(dataset_path) / ("case_" + number) 
 
         image_list = data_path.glob("image*")
-        feature_list = data_path.glob("coordinate*")
+        #feature_list = data_path.glob("coordinate*")
+        feature_list = data_path.glob("coord*")
         label_list = data_path.glob("label*")
         
         image_list = sorted(image_list)
