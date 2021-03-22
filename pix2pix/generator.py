@@ -1,4 +1,5 @@
 from torch import nn
+import torch
 import functools
 
 class UNetGenerator(nn.Module):

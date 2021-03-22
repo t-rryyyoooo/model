@@ -1,11 +1,12 @@
 from math import log10
-import pytoch_lightning as pl
+import pytorch_lightning as pl
 from torch import nn
 import torch
 from torch.utils.data import DataLoader
 from .utils import defineG, defineD
 from .dataset import Pix2PixDataset
 from .transform import Pix2PixTransform
+from .loss import GANLoss
 
 
 class Pix2PixSystem(pl.LightningModule):
@@ -18,6 +19,7 @@ class Pix2PixSystem(pl.LightningModule):
 
         self.dataset_path  = dataset_path
         self.criteria      = criteria
+        self.checkpoint    = checkpoint
         self.batch_size    = batch_size
         self.lr            = lr
         self.num_workers   = num_workers
@@ -44,6 +46,8 @@ class Pix2PixSystem(pl.LightningModule):
 
     def training_step(self, batch, batch_idx, optimizer_idx):
         real_input, real_target = batch
+        real_input  = real_input.float()
+        real_target = real_target.float()
         fake = self.generator(real_input)
         real_fake = torch.cat((real_input, fake), 1)
         pred_fake = self.discriminator.forward(real_fake)
@@ -54,24 +58,38 @@ class Pix2PixSystem(pl.LightningModule):
             g_loss_l1  = self.loss_func_l1(fake, real_target)
             g_loss = g_loss_gan + g_loss_l1
 
-            return g_loss
+            return {"loss" : g_loss, "g_loss" : g_loss}
 
         # D
         if optimizer_idx == 1:
-            d_loss_fake = self.loss_fun_gan(pred, False)
+            d_loss_fake = self.loss_fun_gan(pred_fake, False)
 
             real_real = torch.cat((real_input, real_target), 1)
             pred_real = self.discriminator(real_real)
             d_loss_real = self.loss_fun_gan(pred_real, True)
             d_loss = (d_loss_real + d_loss_fake) * 0.5
 
-            return d_loss
+            return {"loss" : d_loss, "d_loss" : d_loss}
+
+    def training_epoch_end(self, outputs):
+        if "d_loss" in outputs[0]:
+            avg_d_loss = torch.stack([x["d_loss"] for x in outputs]).mean()
+
+            logs = {"avg_d_loss" : avg_d_loss}
+
+        elif "g_loss" in outputs[0]:
+            avg_g_loss = torch.stack([x["g_loss"] for x in outputs]).mean()
+            logs = {"avg_g_loss" : avg_g_loss}
+
+        return {"log" : logs}
 
     def validation_step(self, batch, batch_idx):
         real_input, real_target = batch
+        real_input  = real_input.float()
+        real_target = real_target.float()
         fake = self.generator(real_input)
         mse = self.loss_func_mse(fake, real_target)
-        pnsr = torch.tensor([10 * log10(1 / mse.item())])# Note: input image need to normalize (0 - 1). If not, change 1 to the maximize value in the image.
+        psnr = torch.tensor([10 * log10(1 / mse.item())])# Note: input image need to normalize (0 - 1). If not, change 1 to the maximize value in the image.
         return psnr
 
     def validation_epoch_end(self, outputs):
@@ -79,16 +97,16 @@ class Pix2PixSystem(pl.LightningModule):
 
         """ Save model. """
         if self.checkpoint is not None:
-            self.checkpoint(avg_psnr.item(), self)
+            self.checkpoint(avg_psnr.item(), self.generator)
         
 
         logs = {"val_psnr" : avg_psnr}
 
         return {"avg_val_loss" : avg_psnr, "log" : logs, "progress_bar" : logs}
 
-    def configure_optimizeris(self):
+    def configure_optimizers(self):
         self.g_optimizer = torch.optim.Adam(self.generator.parameters(), lr=self.lr)
-        self.d_optimizer = torch.optim.Adam(seld.discriminator.parameters(), lr=self.lr)
+        self.d_optimizer = torch.optim.Adam(self.discriminator.parameters(), lr=self.lr)
         
         optimizer_list = [self.g_optimizer, self.d_optimizer]
         return optimizer_list
@@ -99,7 +117,7 @@ class Pix2PixSystem(pl.LightningModule):
                             dataset_path = self.dataset_path,
                             phase = "train",
                             criteria = self.criteria,
-                            transform = Pix2PixTransform()
+                            transforms = Pix2PixTransform()
                             )
 
         train_loader = DataLoader(
@@ -117,9 +135,10 @@ class Pix2PixSystem(pl.LightningModule):
                             dataset_path = self.dataset_path,
                             phase = "val",
                             criteria = self.criteria,
+                            transforms = Pix2PixTransform()
                             )
 
-        val_dataloader = DataLoader(
+        val_loader = DataLoader(
                         val_dataset,
                         shuffle=True,
                         batch_size = self.batch_size,

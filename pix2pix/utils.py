@@ -1,5 +1,6 @@
 import functools
 from torch import nn
+import torch
 from torch.nn import init
 from pathlib import Path
 from .generator import UNetGenerator
@@ -175,7 +176,7 @@ def initWeights(net, init_type="normal", init_gain=0.02):
                 init.constant_(m.bias.data, 0.0)
 
         elif class_name.find("BatchNorm2d") != -1: # BatchNorm layer's weight is not a matrix; only normal distribution applis.
-            init.normal__(m.weight.data, 1.0, init_gain)
+            init.normal_(m.weight.data, 1.0, init_gain)
             init.constant_(m.bias.data, 0.0)
 
     print("Initialize network with {}".format(init_type))

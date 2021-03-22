@@ -7,7 +7,7 @@ class GANLoss(nn.Module):
     The GANLoss class abstracts away the need to create the target label tensor that has the same size as the input.
     """
 
-    def __init__(self, gan_mode, target_real_label=1.0, target_fake_label=0.0):
+    def __init__(self, gan_mode="lsgan", target_real_label=1.0, target_fake_label=0.0):
         """ Initialize the GANLoss class.
 
         Parameters:
