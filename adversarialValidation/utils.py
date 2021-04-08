@@ -3,21 +3,47 @@ import numpy as np
 from pathlib import Path
 import torch
 
-def separateData(dataset_path, criteria, phase): 
-    dataset = []
-    for number in criteria[phase]:
-        data_path = Path(dataset_path) / ("case_" + number) 
+class DICE():
+    def __init__(self, num_class, device):
+        self.num_class = num_class
+        self.device = device
+        """
+        Required : not onehot (after argmax)
+        ex : [[0,1], [2,5],[10,11]]
+        """
 
-        image_list = data_path.glob("image*")
-        label_list = data_path.glob("label*")
+    def compute(self, true, pred):
+        eps = 10**-9
+        assert true.size() == pred.size()
         
-        image_list = sorted(image_list)
-        label_list = sorted(label_list)
+        true.to(self.device)
+        true.to(self.device)
 
-        for img, lab in zip(image_list, label_list):
-            dataset.append((str(img), str(lab)))
+        
+        intersection = (true * pred).sum()
+        union = (true * true).sum() + (pred * pred).sum()
+        dice = (2. * intersection) / (union + eps)
+        """
+        intersection = (true == pred).sum()
+        union = (true != 0).sum() + (pred != 0).sum()
+        dice = 2. * (intersection + eps) / (union + eps)
+        """
+        
+        return dice
 
-    return dataset
+    def computePerClass(self, true, pred):
+        DICE = []
+        for x in range(self.num_class):
+            true_part = (true == x).int()
+            pred_part = (pred == x).int()
+            """
+            true_part = true[..., x]
+            pred_part = pred[..., x]
+            """
+            dice = self.compute(true_part, pred_part)
+            DICE.append(dice)
+
+        return DICE
 
 
 
