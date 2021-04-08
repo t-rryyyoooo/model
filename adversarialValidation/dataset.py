@@ -1,21 +1,21 @@
-import torch.utils.data as data
-from .utils import separateData
 from pathlib import Path
+from torch.utils import data
+import numpy as np
 
-class UNetDataset(data.Dataset):
-    def __init__(self, dataset_path=None, phase="train", criteria=None, transform=None):
+class CNNDataset(data.Dataset):
+    def __init__(self, dataset, phase="train", transform=None):
         self.transform = transform
         self.phase = phase
-
-        self.data_list = separateData(dataset_path, criteria, phase)
+        self.dataset = dataset
 
     def __len__(self):
-        return len(self.data_list)
+        return len(self.dataset)
 
     def __getitem__(self, index):
-        path = self.data_list[index]
-        imageArray, labelArray = self.transform(self.phase, *path)
+        path, label = self.dataset[index]
+        imageArray = self.transform(self.phase, path)
+        label = label[np.newaxis, ...]
 
-        return imageArray, labelArray
+        return imageArray, label
 
 

@@ -1,9 +1,5 @@
 import torch
 from torch import nn
-if __name__ == "__main__":
-    from utils import cropping3D
-else:
-    from .utils import cropping3D
 from torchsummary import summary
 
 class ConvBlock(nn.Module):
@@ -107,7 +103,7 @@ class CNN(nn.Module):
         for layer in self.layers:
             x = layer(x)
 
-        x = x.flatten()
+        x = x.view(-1, 24576)
         x = self.linear(x)
 
         return x

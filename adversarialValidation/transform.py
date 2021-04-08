@@ -1,6 +1,6 @@
 from .preprocessing import *
 
-class UNetTransform():
+class CNNTransform():
     def __init__(self):
         self.transforms = {
                 "train" : Compose([
@@ -14,9 +14,9 @@ class UNetTransform():
                     ])
                 }
 
-    def __call__(self, phase, image, label):
+    def __call__(self, phase, image):
         image = self.transforms[phase](image)
 
-        return image, label
+        return image
 
 
