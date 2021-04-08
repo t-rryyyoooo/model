@@ -1,7 +1,5 @@
 import SimpleITK as sitk
 import numpy as np
-from .utils import *
-from random import randint
 
 class Compose(object):
     def __init__(self, transforms):
@@ -22,6 +20,8 @@ class ReadImage(object):
 class GetArrayFromImage(object):
     def __call__(self, image):
         image_array = sitk.GetArrayFromImage(image)
+        if image_array.ndim != 4:
+            image_array = image_array[np.newaxis, ...]
 
         return image_array
 
