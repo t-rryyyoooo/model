@@ -75,28 +75,22 @@ class LoadNpy(object):
     def __call__(self, input_file_or_list, target_file):
         target_image_array = np.load(target_file)
 
-        if isinstance(input_file_or_list, list):
-            input_image_array_list = self.call_for_image_list(input_file_or_list)
-            return input_image_array_list, target_image_array
+        if isinstance(input_file_or_list, str):
+            input_file_list = [input_file_or_list]
+        else:
+            input_file_list = input_file_or_list
 
-        elif isinstance(input_file_or_list, str):
-            input_image_array = self.call_for_image(input_file_or_list) 
-            
-            return input_image_array, target_image_array
-
-    def call_for_image_list(self, input_file_list):
         input_image_array_list = []
         for input_file in input_file_list:
             input_image_array = np.load(input_file)
 
             input_image_array_list.append(input_image_array)
 
-        return input_image_array_list
+        if len(input_image_array_list) == 1:
+            return input_image_array_list[0], target_image_array
 
-    def call_for_image(self, input_file):
-        input_image_array  = np.load(input_file)
-
-        return input_image_array
+        else:
+            return input_image_array_list, target_image_array
 
 class LoadMha(object):
     def __init__(self):
@@ -107,33 +101,25 @@ class LoadMha(object):
         """
 
     def __call__(self, input_file_or_list, target_file):
-        target_image = sitk.ReadImage(target_file)
+        target_image       = sitk.ReadImage(target_file)
         target_image_array = sitk.GetArrayFromImage(target_image)
 
-        if isinstance(input_file_or_list, list):
-            input_image_array_list = self.call_for_image_list(input_file_or_list)
-            return input_image_array_list, target_image_array
+        if isinstance(input_file_or_list, str):
+            input_file_list = [input_file_or_list]
+        else:
+            input_file_list = input_file_or_list
 
-        elif isinstance(input_file_or_list, str):
-            input_image_array = self.call_for_image(input_file_or_list) 
-            
-            return input_image_array, target_image_array
-
-    def call_for_image_list(self, input_file_list):
         input_image_array_list = []
         for input_file in input_file_list:
-            input_image = sitk.ReadImage(input_file)
+            input_image       = sitk.ReadImage(input_file)
             input_image_array = sitk.GetArrayFromImage(input_image)
 
             input_image_array_list.append(input_image_array)
 
-        return input_image_array_list
-
-    def call_for_image(self, input_file):
-        input_image  = sitk.ReadImage(input_file)
-        input_image_array  = sitk.GetArrayFromImage(input_image)
-
-        return input_image_array
+        if len(input_image_array_list) == 1:
+            return input_image_array_list[0], target_image_array
+        else:
+            return input_image_array_list, target_image_array
 
 class AdjustDimensionality(object):
     def __init__(self, input_ndim=3, target_ndim=3, direction="head"):
@@ -153,33 +139,31 @@ class AdjustDimensionality(object):
             raise NotImplementedError("This argument [{}] is not supperted.".format(direction))
 
     def __call__(self, input_image_array_or_list, target_image_array):
-        target_image_array = self.addNDim(target_image_array, self.target_ndim, self.direction)
+        translated_target_image_array = self.addNDim(target_image_array, self.target_ndim, self.direction)
 
         if isinstance(input_image_array_or_list, np.ndarray):
-            input_image_array = self.call_for_image(input_image_array_or_list, self.input_ndim, self.direction)
-            return input_image_array, target_image_array
+            input_image_array_list = [input_image_array_or_list]
+            input_ndim             = [self.input_ndim]
 
-        if isinstance(input_image_array_or_list, list):
+        else:
+            input_image_array_list = input_image_array_or_list
             if isinstance(self.input_ndim, int):
-                self.input_ndim = [self.input_ndim] * len(input_image_array_or_list)
-            assert len(self.input_ndim) == len(input_image_array_or_list)
-            input_image_array_list = self.call_for_image_list(input_image_array_or_list, self.input_ndim, self.direction)
+                input_ndim = [self.input_ndim] * len(input_image_array_list)
+            else:
+                input_ndim = self.input_ndim
 
-            return input_image_array_list, target_image_array
+        assert len(input_image_array_list) == len(input_ndim)
 
-    def call_for_image(self, input_image_array: np.ndarray, input_ndim: int, direction: str):
-        input_image_array  = self.addNDim(input_image_array, input_ndim, direction)
-
-        return input_image_array
-
-    def call_for_image_list(self, input_image_array_or_list, input_ndim: list, direction: str):
         translated_image_array_list = []
-        for ndim, input_image_array in zip(input_ndim, input_image_array_or_list):
-            translated_image_array = self.addNDim(input_image_array, ndim, direction)
+        for ndim, input_image_array in zip(input_ndim, input_image_array_list):
+            translated_image_array = self.addNDim(input_image_array, ndim, self.direction)
+        
             translated_image_array_list.append(translated_image_array)
 
-        return translated_image_array_list
-
+        if len(translated_image_array_list) == 1:
+            return translated_image_array_list[0], target_image_array
+        else:
+            return translated_image_array_list, translated_target_image_array
 
     def addNDim(self, image_array, ndim, direction):
         """ Add the number of dimensions of image_array to ndim.
@@ -201,7 +185,7 @@ class AdjustDimensionality(object):
         return image_array
 
 class MinMaxStandardize(object):
-    def __init__(self, min_value=-300.0, max_value=300.0):
+    def __init__(self, input_min_value=-300.0, input_max_value=300.0, target_min_value=-300, target_max_value=300):
         """ Apply the following fomula to each voxel (min max scaling).
 
         V_new = (V_org - min_value) / (max_value- min_value)
@@ -209,18 +193,48 @@ class MinMaxStandardize(object):
             min_value (float) -- Refer above.
             max_value (float) -- Refer above.
         """
-        self.min_value = min_value
-        self.max_value = max_value
+        self.input_min_value  = input_min_value
+        self.input_max_value  = input_max_value
+        self.target_min_value = target_min_value
+        self.target_max_value = target_max_value
 
-    def __call__(self, input_image_array: np.ndarray, target_image_array: np.ndarray):
-        input_image_array  = self.standardize(input_image_array)
-        target_image_array = self.standardize(target_image_array)
+    def __call__(self, input_image_array_or_list, target_image_array: np.ndarray):
+        translated_target_image_array = self.standardize(target_image_array, self.target_min_value, self.target_max_value)
 
-        return input_image_array, target_image_array
+        if isinstance(input_image_array_or_list, np.ndarray):
+            input_image_array_list = [input_image_array_or_list]
+            input_min_value        = [self.input_min_value]
+            input_max_value        = [self.input_max_value]
 
-    def standardize(self, image_array):
-        image_array = image_array.clip(min=self.min_value, max=self.max_value)
-        image_array = (image_array - self.min_value) / (self.max_value - self.min_value)
+        else:
+            input_image_array_list = input_image_array_or_list
+            if isinstance(self.input_min_value, int):
+                input_min_value = [self.input_min_value] * len(input_image_array_list)
+            else:
+                input_min_value = self.input_min_value
+
+            if isinstance(self.input_max_value, int):
+                input_max_value = [self.input_max_value] * len(input_image_array_list)
+            else:
+                input_max_value = self.input_max_value
+
+        assert len(input_image_array_list) == len(input_min_value) == len(input_max_value)
+
+        translated_image_array_list = []
+        for input_image_array, min_value, max_value in zip(input_image_array_list, input_min_value, input_max_value):
+            translated_image_array  = self.standardize(input_image_array, min_value, max_value)
+
+            translated_image_array_list.append(translated_image_array)
+
+
+        if len(translated_image_array_list) == 1:
+            return translated_image_array_list[0], translated_target_image_array
+        else:
+            return translated_image_array_list, translated_target_image_array
+
+    def standardize(self, image_array, min_value, max_value):
+        image_array = image_array.clip(min=min_value, max=max_value)
+        image_array = (image_array - min_value) / (max_value - min_value)
 
         return image_array
 
@@ -252,20 +266,26 @@ class Clip(object):
 
 # Test
 if __name__ == "__main__":
-    gz = "/sandisk/data/Abdomen/case_00/imaging_resampled.nii.gz"
-    mha = "/sandisk/data/Abdomen/case_00/liver_resampled.mha"
-    npy = "/sandisk/test.npy"
+    #gz = "/sandisk/data/Abdomen/case_00/imaging_resampled.nii.gz"
+    #mha = "/sandisk/data/Abdomen/case_00/liver_resampled.mha"
+    #npy = "/sandisk/test.npy"
+    gz = "/Users/tanimotoryou/Documents/lab/imageData/Abdomen/case_00/imaging_resampled.nii.gz"
+    mha = "/Users/tanimotoryou/Documents/lab/imageData/Abdomen/case_00/liver_resampled.mha"
+    npy = "/Users/tanimotoryou/Desktop/test.npy"
 
     c = Compose([
             LoadMultipleData(),
-            AdjustDimensionality(input_ndim=5, target_ndim=5)
+            AdjustDimensionality(input_ndim=[4,5,4], target_ndim=5),
+            MinMaxStandardize(input_min_value=-300, input_max_value=300, target_min_value=-300, target_max_value=300)
             ])
 
     l = [npy, npy, npy]
-    a, b = c(l, npy)
+    a, b = c(l, npy) 
     for aa in a:
-        print(aa.shape)
-    print(b.shape)
+        print(aa.min())
+        print(aa.max())
+    print(b.min())
+    print(b.max())
  
 
 
