@@ -7,6 +7,7 @@ from .utils import defineG, defineD
 from .dataset import Pix2PixDataset
 from .transform import Pix2PixTransform
 from .loss import GANLoss
+from .callbacks import LatestModelCheckpoint, BestModelCheckpoint, SavePredImages
 
 
 class Pix2PixSystem(pl.LightningModule):
@@ -14,12 +15,12 @@ class Pix2PixSystem(pl.LightningModule):
     Parameters: 
 
     """
-    def __init__(self, dataset_path=None, criteria=None, checkpoint=None, lr=0.001, batch_size=3, num_workers=6, G_input_ch=1, G_output_ch=1, G_name="unet_256", D_input_ch=2, D_name="PatchGAN", ngf=64, gpu_ids=[]):
+    def __init__(self, dataset_path=None, criteria=None, callbacks=None, lr=0.001, batch_size=3, num_workers=6, G_input_ch=1, G_output_ch=1, G_name="unet_256", D_input_ch=2, D_name="PatchGAN", ngf=64, gpu_ids=[]):
         super(Pix2PixSystem, self).__init__()
 
         self.dataset_path  = dataset_path
         self.criteria      = criteria
-        self.checkpoint    = checkpoint
+        self.callbacks     = callbacks
         self.batch_size    = batch_size
         self.lr            = lr
         self.num_workers   = num_workers
@@ -96,8 +97,8 @@ class Pix2PixSystem(pl.LightningModule):
         avg_psnr = torch.stack(outputs).mean()
 
         """ Save model. """
-        if self.checkpoint is not None:
-            self.checkpoint(avg_psnr.item(), self.generator)
+        for callbacks in self.callbacks:
+            callbacks(avg_psnr.item(), self.generator, self.current_epoch)
         
 
         logs = {"val_psnr" : avg_psnr}
