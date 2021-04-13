@@ -44,7 +44,7 @@ class LoadMultipleData(object):
         """
         if isinstance(input_file_or_list, str):
             _, ext = os.path.splitext(input_file_or_list)# ext: extension
-        elif isinstance(input_file_or_list, list):
+        else:
             _, ext = os.path.splitext(input_file_or_list[0])# ext: extension
         if ext == ".npy":
             input_image_array_or_list, target_image_array = self.npy_loader(

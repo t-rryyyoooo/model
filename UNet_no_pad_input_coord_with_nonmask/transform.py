@@ -1,15 +1,35 @@
-from .preprocessing import Compose, LoadMultipleData 
+from .preprocessing import Compose, LoadMultipleData , MinMaxStandardize, AdjustDimensionality
 
 class UNetTransform():
     def __init__(self):
 
         self.transforms = {
                 "train" : Compose([
-                    LoadMultipleData()
+                    LoadMultipleData(),
+                    MinMaxStandardize(
+                        input_min_value  = [-300, -200],
+                        input_max_value  = [300, 500],
+                        target_min_value = -300,
+                        target_max_value = 300
+                        ),
+                    AdjustDimensionality(
+                        input_ndim  = 4,
+                        target_ndim = 3
+                        )
                     ]), 
 
                 "val" : Compose([
-                    LoadMultipleData()
+                    LoadMultipleData(),
+                    MinMaxStandardize(
+                        input_min_value  = [-300, -200],
+                        input_max_value  = [300, 500],
+                        target_min_value = -300,
+                        target_max_value = 300
+                        ),
+                    AdjustDimensionality(
+                        input_ndim  = 4,
+                        target_ndim = 3
+                        )
                     ])
                 }
 
