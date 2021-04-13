@@ -4,7 +4,6 @@ import cv2
 import numpy
 from torch.utils.data import DataLoader
 from .transform import Pix2PixTransform 
-from torch.utils import data
 
 class LatestModelCheckpoint(object):
     def __init__(self, save_directory, save_name="latest.pkl"):
@@ -34,12 +33,15 @@ class BestModelCheckpoint(object):
                 cloudpickle.dump(model, f)
 
 class SavePredImages(object):
-    def __init__(self, save_directory: str, dataset_path,, criteria, phase="test", transform, num_columns=5, save_ext="jpg"):
+    def __init__(self, save_directory: str, dataset_path: str, criteria, transforms, phase="test", num_columns=5, save_ext="jpg"):
         """ Predict fed images and save them in num_columns * (len(input_image_list) // num_colum) arrangement.
 
         Parameters: 
             save_directory (str)    -- Save predicted images to this.
-            dataset (data.Dataset)  -- Dataset path which has data per patient in case_xx. 
+            dataset_path (str)      -- Dataset path which has data per patient in case_xx. 
+            criteria (dict)         -- Which case_??? you use for train or val or test. {key : case_id("000")} (ex) {"train" : "000", "val" : "100", "test" : "test"}
+            transforms              -- Preprocessing.
+            phase (str)             -- The key for criteria.
             num_columns (int)       -- The number of images lined up horizontally.
             save_ext (str)          -- Extension for saving. npy or extensions available in cv2.
         """
@@ -47,9 +49,15 @@ class SavePredImages(object):
         self.save_directory   = Path(save_directory)
 
         dataset = Pix2PixDataset(
-                    dataset_path = input_image_list
-        self.input_image_list = input_image_list
+                    dataset_path = dataset_path,
+                    criteria     = criteria,
+                    transforms   = transforms,
+                    phase        = phase
+                    )
 
+        self.data_loader = DataLoader(
+                            dataset
+                            )
 
     def __call__(self, pred, model, epoch):
         pred_list = []
@@ -57,8 +65,8 @@ class SavePredImages(object):
         input_list = []
         temp_input_list = []
 
-        for i, input_image in enumerate(input_image_list):
-            input__array = input.to("cpu".detach().numpy().astype(np.float)
+        for i, input_image_array in enumerate(self.data_loader):
+            input_image_array = input.to("cpu".detach().numpy().astype(np.float)
             pred_array = model(input_image).to("cpu").detach().numpy().astype(np.float)
             pred_array = np.squeeze(pred_array)
 

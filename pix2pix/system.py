@@ -15,28 +15,32 @@ class Pix2PixSystem(pl.LightningModule):
     Parameters: 
 
     """
-    def __init__(self, dataset_path=None, criteria=None, callbacks=None, lr=0.001, batch_size=3, num_workers=6, G_input_ch=1, G_output_ch=1, G_name="unet_256", D_input_ch=2, D_name="PatchGAN", ngf=64, gpu_ids=[]):
+    def __init__(self, dataset_path=None, criteria=None, log_path=None, lr=0.001, batch_size=3, num_workers=6, G_input_ch=1, G_output_ch=1, G_name="unet_256", D_input_ch=2, D_name="PatchGAN", ngf=64, gpu_ids=[]):
         super(Pix2PixSystem, self).__init__()
 
         self.dataset_path  = dataset_path
         self.criteria      = criteria
-        self.callbacks     = callbacks
+        self.callbacks     = [
+                            LatestModelCheckpoint(log_path),
+                            BestModelCheckpoint(log_path),
+                            SavePredImages(log_path, dataset_path, criteria, Pix2PixTransform, phase="test")
+                                ]
         self.batch_size    = batch_size
         self.lr            = lr
         self.num_workers   = num_workers
         self.generator     = defineG(
-                                input_ch = G_input_ch, 
-                                output_ch = G_output_ch, 
-                                ngf = ngf, 
-                                G_name = G_name, 
+                                input_ch    = G_input_ch, 
+                                output_ch   = G_output_ch, 
+                                ngf         = ngf, 
+                                G_name      = G_name, 
                                 use_dropout = True, 
-                                gpu_ids = gpu_ids
+                                gpu_ids     = gpu_ids
                                 )
         self.discriminator = defineD(
                                 input_ch = D_input_ch,
-                                ndf = ngf,
-                                D_name = D_name,
-                                gpu_ids = gpu_ids
+                                ndf      = ngf,
+                                D_name   = D_name,
+                                gpu_ids  = gpu_ids
                                 )
         self.loss_fun_gan  = GANLoss()
         self.loss_func_l1  = nn.L1Loss()
@@ -147,9 +151,3 @@ class Pix2PixSystem(pl.LightningModule):
                         )
 
         return val_loader
-
-
-
-
-
-    

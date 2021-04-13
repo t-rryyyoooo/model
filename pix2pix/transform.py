@@ -1,7 +1,7 @@
-from .preprocessing import Compose, LoadMultipleData
+from .preprocessing import *
 
 class Pix2PixTransform():
-    def __init__(self, input_ndim=3, target_ndim=3):
+    def __init__(self, clip_size=[256, 256], min_value=-300., max_value=300., input_ndim=3, target_ndim=3):
         """ Define which transformation you want to to do. 
         If you want to transform images more, just add transformation class to list in Compose as below.
 
@@ -13,10 +13,38 @@ class Pix2PixTransform():
 
         self.transforms = {
                 "train" : Compose([
-                    LoadMultipleData(input_ndim, target_ndim)
+                    LoadMultipleData(),
+                    Clip(clip_size),
+                    MinMaxStandardize(
+                        min_value = min_value, 
+                        max_value = max_value
+                        ),
+                    AdjustDimensionality(
+                        input_ndim  = input_ndim,
+                        target_ndim = target_ndim
+                        )
                     ]),
                 "val" : Compose([
-                    LoadMultipleData(input_ndim, target_ndim)
+                    LoadMultipleData(),
+                    MinMaxStandardize(
+                        min_value = min_value, 
+                        max_value = max_value
+                        ),
+                    AdjustDimensionality(
+                        input_ndim  = input_ndim,
+                        target_ndim = target_ndim
+                        )
+                    ]),
+                "test" : Compose([
+                    LoadMultipleData(),
+                    MinMaxStandardize(
+                        min_value = min_value, 
+                        max_value = max_value
+                        ),
+                    AdjustDimensionality(
+                        input_ndim  = input_ndim,
+                        target_ndim = target_ndim
+                        )
                     ])
                 }
 
