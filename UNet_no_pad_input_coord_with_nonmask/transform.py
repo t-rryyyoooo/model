@@ -17,7 +17,6 @@ class UNetTransform():
                         target_ndim = 3
                         )
                     ]), 
-
                 "val" : Compose([
                     LoadMultipleData(),
                     MinMaxStandardize(
@@ -30,7 +29,20 @@ class UNetTransform():
                         input_ndim  = 4,
                         target_ndim = 3
                         )
+                    ]),
+                "test" : Compose([
+                    MinMaxStandardize(
+                        input_min_value  = [-300, -200],
+                        input_max_value  = [300, 500],
+                        target_min_value = -300,
+                        target_max_value = 300
+                        ),
+                    AdjustDimensionality(
+                        input_ndim  = 5,
+                        target_ndim = 3
+                        )
                     ])
+ 
                 }
 
     def __call__(self, phase, image_list, label):
