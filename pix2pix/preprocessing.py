@@ -110,7 +110,6 @@ class Clip(object):
             slices.append(s)
 
         slices = tuple(slices)
-        print(slices)
         clipped_image_array = image_array[slices]
 
         return clipped_image_array
