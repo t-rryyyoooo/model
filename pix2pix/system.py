@@ -23,7 +23,7 @@ class Pix2PixSystem(pl.LightningModule):
         self.callbacks     = [
                             LatestModelCheckpoint(log_path),
                             BestModelCheckpoint(log_path),
-                            SavePredImages(log_path, dataset_path, criteria, Pix2PixTransform(), phase="test")
+                            SavePredImages(log_path, dataset_path, criteria, Pix2PixTransform(), phase="val")
                                 ]
         self.batch_size    = batch_size
         self.lr            = lr

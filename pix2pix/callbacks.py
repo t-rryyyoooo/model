@@ -2,6 +2,7 @@ import cloudpickle
 from pathlib import Path
 import cv2
 import numpy as np
+import datetime
 from torch.utils.data import DataLoader
 from .transform import Pix2PixTransform 
 from .dataset import Pix2PixDataset
@@ -62,46 +63,53 @@ class SavePredImages(object):
         self.num_columns = num_columns
         self.save_ext    = save_ext
 
-    def __call__(self, pred, model, epoch):
+    def concatImages(self, data_loader, num_columns=5, model=None):
         pred_list = []
         temp_pred_list = []
-        input_list = []
-        temp_input_list = []
+        for i, (image_array, _) in enumerate(data_loader):
+            image_array = image_array.float()
+            if model is not None:
+                pred_array = model(image_array).to("cpu").detach().numpy().astype(np.float)
+                pred_array = np.squeeze(pred_array)
 
-        for i, (input_image_array, _) in enumerate(self.data_loader):
-            input_image_array = input_image_array.float()
-            input_array = input_image_array.to("cpu").detach().numpy().astype(np.float)
-            input_array = np.squeeze(input_array)
-            pred_array  = model(input_image_array).to("cpu").detach().numpy().astype(np.float)
-            pred_array  = np.squeeze(pred_array)
+            else:
+                pred_array = image_array
 
-            if (i + 1) % self.num_columns == 0:
+            if (i + 1) % num_columns == 0:
                 temp_pred_list.append(pred_array)
-                temp_pred_list = np.concatenate(temp_pred_list)
+                temp_pred_list = np.concatenate(temp_pred_list, axis=1)
+
                 pred_list.append(temp_pred_list)
                 temp_pred_list = []
 
-                temp_input_list.append(input_array)
-                temp_input_list = np.concatenate(temp_input_list)
-                input_list.append(temp_input_list)
-                temp_input_list = []
-
             else:
                 temp_pred_list.append(pred_array)
-                temp_input_list.append(input_array)
 
-        save_pred = np.concatenate(pred_list, axis=1)
-        save_img  = np.concatenate(input_list, axis=1)
+        pred_image = np.concatenate(pred_list)
 
-        save_pred_path = self.save_directory / "pred_epoch_{:03d}_loss_{:.3f}.{}".format(int(epoch), pred, self.save_ext)
-        save_img_path  = self.save_directory / "input_epoch_{:03d}_loss_{:.3f}.{}".format(int(epoch), pred, self.save_ext)
+        return pred_image
 
+    def saveImage(self, img, save_path):
         if self.save_ext == "npy":
-            np.save(str(save_pred_path), save_pred)
-            np.save(str(save_img_path), save_img)
-
+            np.save(save_path, img)
         else:
-            save_pred = np.clip(save_pred * 255, 0, 255)
-            save_img  = np.clip(save_img * 255, 0, 255)
-            cv2.imwrite(str(save_pred_path), save_pred)
-            cv2.imwrite(str(save_img_path), save_img)
+            img = np.clip(img * 255, 0, 255)
+            cv2.imwrite(save_path, img)
+
+
+
+    def __call__(self, pred, model, epoch):
+        dt_now = datetime.datetime.now()
+        date = "{}_{}:{}".format(str(datetime.date.today()), dt_now.hour, dt_now.minute)
+
+        save_pred = self.concatImages(self.data_loader, num_columns=self.num_columns, model=model)
+        save_pred_path = self.save_directory / "{}_pred_epoch_{:03d}_loss_{:.3f}.{}".format(date, int(epoch), pred, self.save_ext)
+
+        self.saveImage(save_pred, str(save_pred_path))
+        
+        if epoch == 0:
+            save_img = self.concatImages(self.data_loader, num_columns=self.num_columns, model=None)
+            save_img_path  = self.save_directory / "{}_input.{}".format(date, self.save_ext)
+
+            self.saveImage(save_img, str(save_img_path))
+
