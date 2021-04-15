@@ -63,7 +63,9 @@ class Pix2PixSystem(pl.LightningModule):
             g_loss_l1  = self.loss_func_l1(fake, real_target)
             g_loss = g_loss_gan + g_loss_l1
 
-            return {"loss" : g_loss, "g_loss" : g_loss}
+            self.log("g_loss", g_loss)
+
+            return {"loss" : g_loss}
 
         # D
         if optimizer_idx == 1:
@@ -74,19 +76,9 @@ class Pix2PixSystem(pl.LightningModule):
             d_loss_real = self.loss_fun_gan(pred_real, True)
             d_loss = (d_loss_real + d_loss_fake) * 0.5
 
-            return {"loss" : d_loss, "d_loss" : d_loss}
+            self.log("d_loss" : d_loss)
 
-    def training_epoch_end(self, outputs):
-        if "d_loss" in outputs[0]:
-            avg_d_loss = torch.stack([x["d_loss"] for x in outputs]).mean()
-
-            logs = {"avg_d_loss" : avg_d_loss}
-
-        elif "g_loss" in outputs[0]:
-            avg_g_loss = torch.stack([x["g_loss"] for x in outputs]).mean()
-            logs = {"avg_g_loss" : avg_g_loss}
-
-        return {"log" : logs}
+            return {"loss" : d_loss}
 
     def validation_step(self, batch, batch_idx):
         real_input, real_target = batch
@@ -95,19 +87,9 @@ class Pix2PixSystem(pl.LightningModule):
         fake = self.generator(real_input)
         mse = self.loss_func_mse(fake, real_target)
         psnr = torch.tensor([10 * log10(1 / mse.item())])# Note: input image need to normalize (0 - 1). If not, change 1 to the maximize value in the image.
+        self.log("PSNR", psnr)
+
         return psnr
-
-    def validation_epoch_end(self, outputs):
-        avg_psnr = torch.stack(outputs).mean()
-
-        """ Save model. """
-        for callbacks in self.callbacks:
-            callbacks(avg_psnr.item(), self.generator, self.current_epoch)
-        
-
-        logs = {"val_psnr" : avg_psnr}
-
-        return {"avg_val_loss" : avg_psnr, "log" : logs, "progress_bar" : logs}
 
     def configure_optimizers(self):
         self.g_optimizer = torch.optim.Adam(self.generator.parameters(), lr=self.lr)
