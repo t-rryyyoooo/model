@@ -22,6 +22,7 @@ class Pix2PixDataset(data.Dataset):
         return input_image_array, target_image_array
 
 
+#Test
 if __name__ == "__main__":
     import numpy as np
     from transform import Pix2PixTransform

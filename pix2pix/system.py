@@ -15,7 +15,7 @@ class Pix2PixSystem(pl.LightningModule):
     Parameters: 
 
     """
-    def __init__(self, dataset_path=None, criteria=None, log_path=None, lr=0.001, batch_size=3, num_workers=6, G_input_ch=1, G_output_ch=1, G_name="unet_256", D_input_ch=2, D_name="PatchGAN", ngf=64, gpu_ids=[]):
+    def __init__(self, dataset_path=None, criteria=None, log_path=None, l1_lambda=100., lr=0.001, batch_size=3, num_workers=6, G_input_ch=1, G_output_ch=1, G_name="unet_256", D_input_ch=2, D_name="PatchGAN", ngf=64, gpu_ids=[]):
         super(Pix2PixSystem, self).__init__()
 
         self.dataset_path  = dataset_path
@@ -26,6 +26,7 @@ class Pix2PixSystem(pl.LightningModule):
                             SavePredImages(log_path, dataset_path, criteria, Pix2PixTransform(), phase="val")
                                 ]
         self.batch_size    = batch_size
+        self.l1_lambda     = l1_lambda
         self.lr            = lr
         self.num_workers   = num_workers
         self.generator     = defineG(
@@ -60,7 +61,7 @@ class Pix2PixSystem(pl.LightningModule):
         # G
         if optimizer_idx == 0:
             g_loss_gan = self.loss_fun_gan(pred_fake, True)
-            g_loss_l1  = self.loss_func_l1(fake, real_target)
+            g_loss_l1  = self.loss_func_l1(fake, real_target) * self.l1_lambda
             g_loss = g_loss_gan + g_loss_l1
 
             self.log("g_loss", g_loss, on_step=False, on_epoch=True)
