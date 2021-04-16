@@ -14,19 +14,18 @@ class UNetSystem(pl.LightningModule):
     def __init__(self, dataset_mask_path, dataset_nonmask_path, criteria, rate, in_channel_img, in_channel_coord, num_class, learning_rate, batch_size, checkpoint, num_workers, dropout=0.5):
         super(UNetSystem, self).__init__()
         use_cuda = torch.cuda.is_available() and True
-        self.device = torch.device("cuda" if use_cuda else "cpu")
         self.dataset_mask_path = dataset_mask_path
         self.dataset_nonmask_path = dataset_nonmask_path
         self.num_class = num_class
-        self.model = UNetModel(in_channel_img, in_channel_coord, self.num_class, dropout=dropout).to(self.device, dtype=torch.float)
+        self.model = UNetModel(in_channel_img, in_channel_coord, self.num_class, dropout=dropout)
         self.criteria = criteria
         self.rate = rate
         self.batch_size = batch_size
         self.learning_rate = learning_rate
         self.checkpoint = checkpoint
         self.num_workers = num_workers
-        self.DICE = DICE(self.num_class, self.device)
-        self.loss = WeightedCategoricalCrossEntropy(device=self.device)
+        self.DICE = DICE(self.num_class)
+        self.loss = WeightedCategoricalCrossEntropy()
         #self.loss = nn.BCEWithLogitsLoss()
 
     def forward(self, x_img, x_coord):
@@ -39,15 +38,15 @@ class UNetSystem(pl.LightningModule):
         label : not onehot 
         """
         images, label = batch
-        images = [image.to(self.device, dtype=torch.float) for image in images]
-        label = label.to(self.device, dtype=torch.long)
+        images = [image.float() for image in images]
+        label = label.long()
 
-        pred = self.forward(*images).to(self.device)
+        pred = self.forward(*images)
         
 
         """ Onehot for loss. """
         pred_argmax = pred.argmax(dim=1)
-        label_onehot = torch.eye(self.num_class)[label].to(self.device).permute((0, 4, 1, 2, 3))
+        label_onehot = torch.eye(self.num_class)[label].permute((0, 4, 1, 2, 3))
 
         dice = self.DICE.compute(label, pred_argmax)
         loss = self.loss(pred, label_onehot)
@@ -62,15 +61,15 @@ class UNetSystem(pl.LightningModule):
         label : not onehot 
         """
         images, label = batch
-        images = [image.to(self.device, dtype=torch.float) for image in images]
-        label = label.to(self.device, dtype=torch.long)
+        images = [image.float() for image in images]
+        label = label.long()
 
-        pred = self.forward(*images).to(self.device)
+        pred = self.forward(*images)
         
 
         """ Onehot for loss. """
         pred_argmax = pred.argmax(dim=1)
-        label_onehot = torch.eye(self.num_class)[label].to(self.device).permute((0, 4, 1, 2, 3))
+        label_onehot = torch.eye(self.num_class)[label].permute((0, 4, 1, 2, 3))
 
         dice = self.DICE.compute(label, pred_argmax)
         loss = self.loss(pred, label_onehot)

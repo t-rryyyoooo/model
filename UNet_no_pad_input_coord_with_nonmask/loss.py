@@ -2,9 +2,8 @@ from torch import nn
 import torch
 
 class WeightedCategoricalCrossEntropy(nn.Module):
-    def __init__(self, device):
+    def __init__(self):
         super(WeightedCategoricalCrossEntropy, self).__init__()
-        self.device = device
 
     def forward(self, pred, true):
         """ 
@@ -18,8 +17,8 @@ class WeightedCategoricalCrossEntropy(nn.Module):
         
         weight = result_f / torch.sum(result_f)
         
-        output = ((-1) * torch.sum(1 / (weight + eps) * true * torch.log(pred + eps), axis=1)).to(self.device)
+        output = ((-1) * torch.sum(1 / (weight + eps) * true * torch.log(pred + eps), axis=1))
 
-        output = output.mean().to(self.device)
+        output = output.mean()
 
         return output

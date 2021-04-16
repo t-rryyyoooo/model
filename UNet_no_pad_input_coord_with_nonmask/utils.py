@@ -102,9 +102,8 @@ def getMinimumValue(image):
     return minmax.GetMinimum()
 
 class DICE():
-    def __init__(self, num_class, device):
+    def __init__(self, num_class):
         self.num_class = num_class
-        self.device = device
         """
         Required : not onehot (after argmax)
         ex : [[0,1], [2,5],[10,11]]
@@ -113,10 +112,6 @@ class DICE():
     def compute(self, true, pred):
         eps = 10**-9
         assert true.size() == pred.size()
-        
-        true.to(self.device)
-        true.to(self.device)
-
         
         intersection = (true * pred).sum()
         union = (true * true).sum() + (pred * pred).sum()
