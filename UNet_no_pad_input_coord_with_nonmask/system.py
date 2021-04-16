@@ -25,8 +25,8 @@ class UNetSystem(pl.LightningModule):
         self.checkpoint = checkpoint
         self.num_workers = num_workers
         self.DICE = DICE(self.num_class)
-        self.loss = WeightedCategoricalCrossEntropy()
-        #self.loss = nn.BCEWithLogitsLoss()
+        #self.loss = WeightedCategoricalCrossEntropy()
+        self.loss = nn.CrossEntropyLoss()
 
     def forward(self, x_img, x_coord):
         x = self.model(x_img, x_coord)
@@ -44,12 +44,10 @@ class UNetSystem(pl.LightningModule):
         pred = self.forward(*images)
         
 
-        """ Onehot for loss. """
         pred_argmax = pred.argmax(dim=1)
-        label_onehot = torch.eye(self.num_class)[label].permute((0, 4, 1, 2, 3))
 
         dice = self.DICE.compute(label, pred_argmax)
-        loss = self.loss(pred, label_onehot)
+        loss = self.loss(pred, label)
 
         self.log("loss", loss, on_step=False, on_epoch=True)
         self.log("dice", dice, on_step=False, on_epoch=True)
@@ -66,13 +64,10 @@ class UNetSystem(pl.LightningModule):
 
         pred = self.forward(*images)
         
-
-        """ Onehot for loss. """
         pred_argmax = pred.argmax(dim=1)
-        label_onehot = torch.eye(self.num_class)[label].permute((0, 4, 1, 2, 3))
 
         dice = self.DICE.compute(label, pred_argmax)
-        loss = self.loss(pred, label_onehot)
+        loss = self.loss(pred, label)
 
         self.log("val_loss", loss, on_step=False, on_epoch=True)
         self.log("val_dice", dice, on_step=False, on_epoch=True)

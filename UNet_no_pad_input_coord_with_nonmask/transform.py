@@ -31,12 +31,12 @@ class UNetTransform():
                         )
                     ]),
                 "test" : Compose([
-                    MinMaxStandardize(
-                        input_min_value  = [-300, -200],
-                        input_max_value  = [300, 500],
-                        target_min_value = -300,
-                        target_max_value = 300
-                        ),
+                    #MinMaxStandardize(
+                    #    input_min_value  = [-300, -200],
+                    #    input_max_value  = [300, 500],
+                    #    target_min_value = -300,
+                    #    target_max_value = 300
+                    #    ),
                     AdjustDimensionality(
                         input_ndim  = 5,
                         target_ndim = 3
