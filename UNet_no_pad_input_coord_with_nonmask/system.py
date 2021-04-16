@@ -51,28 +51,12 @@ class UNetSystem(pl.LightningModule):
 
         dice = self.DICE.compute(label, pred_argmax)
         loss = self.loss(pred, label_onehot)
+
+        self.log("loss", loss, on_step=False, on_epoch=True)
+        self.log("dice", dice, on_step=False, on_epoch=True)
+
+        return loss
         
-        return {"loss" : loss, "dice" : dice}
-
-    def training_epoch_end(self, outputs):
-        avg_loss = torch.stack([x["loss"] for x in outputs]).mean()
-        avg_dice = torch.stack([x["dice"] for x in outputs]).mean()
-
-        self.checkpoint(avg_loss.item(), self.model)
-
-        tensorboard_logs = {
-                "loss" : avg_loss,
-                "dice" : avg_dice, 
-                }
-        progress_bar = {
-                "loss" : avg_loss,
-                "dice" : avg_dice
-                }
-
-
-        return {"avg_loss" : avg_loss, "log" : tensorboard_logs, "progress_bar" : progress_bar}
-
-
     def validation_step(self, batch, batch_idx):
         """
         label : not onehot 
@@ -91,32 +75,21 @@ class UNetSystem(pl.LightningModule):
         dice = self.DICE.compute(label, pred_argmax)
         loss = self.loss(pred, label_onehot)
 
-        return {"val_loss" : loss, "val_dice" : dice}
+        self.log("val_loss", loss, on_step=False, on_epoch=True)
+        self.log("val_dice", dice, on_step=False, on_epoch=True)
+
+        return loss
 
     def validation_epoch_end(self, outputs):
-        avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
-        avg_dice = torch.stack([x["val_dice"] for x in outputs]).mean()
+        avg = torch.stack([x for x in outputs]).mean()
 
-        self.checkpoint(avg_loss.item(), self.model)
-
-        tensorboard_logs = {
-                "val_loss" : avg_loss,
-                "val_dice" : avg_dice, 
-                }
-        progress_bar = {
-                "val_loss" : avg_loss,
-                "val_dice" : avg_dice
-                }
-
-
-        return {"avg_val_loss" : avg_loss, "log" : tensorboard_logs, "progress_bar" : progress_bar}
+        self.checkpoint(avg.item(), self.model)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
 
         return optimizer
 
-    @pl.data_loader
     def train_dataloader(self):
         train_dataset = UNetDataset(
                 dataset_mask_path = self.dataset_mask_path, 
@@ -136,7 +109,6 @@ class UNetSystem(pl.LightningModule):
 
         return train_loader
 
-    @pl.data_loader
     def val_dataloader(self):
         val_dataset = UNetDataset(
                 dataset_mask_path = self.dataset_mask_path, 
@@ -154,11 +126,3 @@ class UNetSystem(pl.LightningModule):
                 )
 
         return val_loader
-
-
-
-
-
-
-
-
