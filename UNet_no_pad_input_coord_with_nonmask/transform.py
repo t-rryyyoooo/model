@@ -6,12 +6,12 @@ class UNetTransform():
         self.transforms = {
                 "train" : Compose([
                     LoadMultipleData(),
-                    MinMaxStandardize(
-                        input_min_value  = [-300, -200],
-                        input_max_value  = [300, 500],
-                        target_min_value = -300,
-                        target_max_value = 300
-                        ),
+                    #MinMaxStandardize(
+                    #    input_min_value  = [-300, -200],
+                    #    input_max_value  = [300, 500],
+                    #    target_min_value = -300,
+                    #    target_max_value = 300
+                    #    ),
                     AdjustDimensionality(
                         input_ndim  = 4,
                         target_ndim = 3
@@ -19,12 +19,12 @@ class UNetTransform():
                     ]), 
                 "val" : Compose([
                     LoadMultipleData(),
-                    MinMaxStandardize(
-                        input_min_value  = [-300, -200],
-                        input_max_value  = [300, 500],
-                        target_min_value = -300,
-                        target_max_value = 300
-                        ),
+                    #MinMaxStandardize(
+                    #    input_min_value  = [-300, -200],
+                    #    input_max_value  = [300, 500],
+                    #    target_min_value = -300,
+                    #    target_max_value = 300
+                    #    ),
                     AdjustDimensionality(
                         input_ndim  = 4,
                         target_ndim = 3
