@@ -73,7 +73,8 @@ class SavePredImages(object):
                 pred_array = np.squeeze(pred_array)
 
             else:
-                pred_array = image_array
+                pred_array = np.squeeze(image_array)
+
 
             if (i + 1) % num_columns == 0:
                 temp_pred_list.append(pred_array)
@@ -111,5 +112,6 @@ class SavePredImages(object):
             save_img = self.concatImages(self.data_loader, num_columns=self.num_columns, model=None)
             save_img_path  = self.save_directory / "{}_input.{}".format(date, self.save_ext)
 
+            print(save_img.shape)
             self.saveImage(save_img, str(save_img_path))
 

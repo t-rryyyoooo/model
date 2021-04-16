@@ -63,9 +63,9 @@ class Pix2PixSystem(pl.LightningModule):
             g_loss_l1  = self.loss_func_l1(fake, real_target)
             g_loss = g_loss_gan + g_loss_l1
 
-            self.log("g_loss", g_loss)
+            self.log("g_loss", g_loss, on_step=False, on_epoch=True)
 
-            return {"loss" : g_loss}
+            return g_loss
 
         # D
         if optimizer_idx == 1:
@@ -76,9 +76,9 @@ class Pix2PixSystem(pl.LightningModule):
             d_loss_real = self.loss_fun_gan(pred_real, True)
             d_loss = (d_loss_real + d_loss_fake) * 0.5
 
-            self.log("d_loss" : d_loss)
+            self.log("d_loss", d_loss, on_step=False, on_epoch=True)
 
-            return {"loss" : d_loss}
+            return d_loss
 
     def validation_step(self, batch, batch_idx):
         real_input, real_target = batch
@@ -87,9 +87,14 @@ class Pix2PixSystem(pl.LightningModule):
         fake = self.generator(real_input)
         mse = self.loss_func_mse(fake, real_target)
         psnr = torch.tensor([10 * log10(1 / mse.item())])# Note: input image need to normalize (0 - 1). If not, change 1 to the maximize value in the image.
-        self.log("PSNR", psnr)
+        self.log("PSNR", psnr, on_step=False)
 
         return psnr
+
+    def validation_epoch_end(self, outputs):
+        avg_psnr = torch.stack([x for x in outputs]).mean()
+        for callback in self.callbacks:
+            callback(avg_psnr, self.generator, self.current_epoch)
 
     def configure_optimizers(self):
         self.g_optimizer = torch.optim.Adam(self.generator.parameters(), lr=self.lr)
@@ -98,7 +103,6 @@ class Pix2PixSystem(pl.LightningModule):
         optimizer_list = [self.g_optimizer, self.d_optimizer]
         return optimizer_list
 
-    @pl.data_loader
     def train_dataloader(self):
         train_dataset = Pix2PixDataset(
                             dataset_path = self.dataset_path,
@@ -116,7 +120,6 @@ class Pix2PixSystem(pl.LightningModule):
 
         return train_loader
 
-    @pl.data_loader
     def val_dataloader(self):
         val_dataset = Pix2PixDataset(
                             dataset_path = self.dataset_path,
