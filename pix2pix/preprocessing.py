@@ -1,7 +1,7 @@
 import os
 import SimpleITK as sitk
 import numpy as np
-from random import randrange
+from random import randrange, randint
 
 class Compose(object):
     def __init__(self, transforms):
@@ -22,6 +22,15 @@ class Compose(object):
         for transform in self.transforms:
             input_image, target_image = transform(input_image, target_image)
         return input_image, target_image
+
+class RandomFlip(object):
+    """ Reverse image array randomly on each axis."""
+    def __call__(self, input_image_array: np.ndarray, target_image_array: np.ndarray):
+        axis = [i for i in range(input_image_arrray.ndim) if randint(0, 1)]
+        flipped_input_array  = np.flip(input_image_array, axis=axis)
+        flipped_target_array = np.flip(target_image_array, axis=axis)
+
+        return flipped_image_array, flipped_target_array
 
 class AdjustDimensionality(object):
     def __init__(self, input_ndim=3, target_ndim=3, direction="head"):
