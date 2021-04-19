@@ -57,23 +57,21 @@ class SavePredImages(object):
                     phase        = phase
                     )
 
-        self.data_loader = DataLoader(
-                            dataset
-                            )
+        self.data_loader = DataLoader(dataset)
         self.num_columns = num_columns
         self.save_ext    = save_ext
 
-    def concatImages(self, data_loader, num_columns=5, model=None):
+    def concatImages(self, data_loader, num_columns=5, model=None, input_or_target=0):
         pred_list = []
         temp_pred_list = []
-        for i, (image_array, _) in enumerate(data_loader):
-            image_array = image_array.float()
+        for i, arrays in enumerate(data_loader):
+            arrays = [array.float() for array in arrays]
             if model is not None:
-                pred_array = model(image_array).to("cpu").detach().numpy().astype(np.float)
+                pred_array = model(arrays[0]).to("cpu").detach().numpy().astype(np.float)
                 pred_array = np.squeeze(pred_array)
 
             else:
-                pred_array = np.squeeze(image_array)
+                pred_array = np.squeeze(arrays[input_or_target])
 
 
             if (i + 1) % num_columns == 0:
@@ -109,9 +107,11 @@ class SavePredImages(object):
         self.saveImage(save_pred, str(save_pred_path))
         
         if epoch == 0:
-            save_img = self.concatImages(self.data_loader, num_columns=self.num_columns, model=None)
+            save_img = self.concatImages(self.data_loader, num_columns=self.num_columns, model=None, input_or_target=0)
+            save_tar = self.concatImages(self.data_loader, num_columns=self.num_columns, model=None, input_or_target=1)
             save_img_path  = self.save_directory / "{}_input.{}".format(date, self.save_ext)
+            save_tar_path  = self.save_directory / "{}_target.{}".format(date, self.save_ext)
 
-            print(save_img.shape)
             self.saveImage(save_img, str(save_img_path))
+            self.saveImage(save_tar, str(save_tar_path))
 
