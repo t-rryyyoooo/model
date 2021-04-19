@@ -1,4 +1,4 @@
-from .preprocessing import *
+from preprocessing import *
 
 class Pix2PixTransform():
     def __init__(self):
@@ -14,11 +14,14 @@ class Pix2PixTransform():
         self.transforms = {
                 "train" : Compose([
                     LoadMultipleData(),
-                    Clip([256, 256]),
+                    ElasticTransform(),
                     MinMaxStandardize(
                         min_value = -300, 
                         max_value = 300
                         ),
+                    Clip([256, 256]),
+                    RandomFlip(),
+                    RandomRotate90(),
                     AdjustDimensionality(
                         input_ndim  = 3,
                         target_ndim = 3
@@ -52,17 +55,12 @@ class Pix2PixTransform():
 
 #Test
 if __name__ == "__main__":
-    t_3 = Pix2PixTransform(3, 3)
-    t_4 = Pix2PixTransform(4, 4)
+    t_3 = Pix2PixTransform()
+    t_4 = Pix2PixTransform()
 
-    input_file = "/Users/tanimotoryou/Documents/lab/imageData/Abdomen/case_01/liver_resampled.mha"
-    target_file = "/Users/tanimotoryou/Documents/lab/imageData/Abdomen/case_01/liver_resampled.mha"
+    input_file  = "/Users/tanimotoryou/Desktop/c.mha"
+    target_file = "/Users/tanimotoryou/Desktop/c.mha"
+
 
     i, t = t_3("train", input_file, target_file)
-    print(i.shape, t.shape)
-    i, t = t_3("val", input_file, target_file)
-    print(i.shape, t.shape)
-    i, t = t_4("train", input_file, target_file)
-    print(i.shape, t.shape)
-    i, t = t_4("val", input_file, target_file)
-    print(i.shape, t.shape)
+    sitk.WriteImage(sitk.GetImageFromArray(i), "/Users/tanimotoryou/Desktop/d.mha")

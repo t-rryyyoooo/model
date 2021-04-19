@@ -1,6 +1,7 @@
 import os
 import SimpleITK as sitk
 import numpy as np
+import elasticdeform
 from random import randrange, randint
 
 class Compose(object):
@@ -23,14 +24,32 @@ class Compose(object):
             input_image, target_image = transform(input_image, target_image)
         return input_image, target_image
 
+class RandomRotate90(object):
+    """ Rotate image array by 90 degree randomly on each axis."""
+    def __call__(self, input_image_array: np.ndarray, target_image_array: np.ndarray):
+        if randint(0, 1):
+            rotated_input_array  = np.rot90(input_image_array)
+            rotated_target_array = np.rot90(target_image_array)
+
+        else:
+            rotated_input_array  = input_image_array
+            rotated_target_array = target_image_array
+
+        return rotated_input_array, rotated_target_array 
+
+class ElasticTransform(object):
+    def __call__(self, input_array, target_array):
+        deformed_input_array, deformed_target_array  = elasticdeform.deform_random_grid([input_array, target_array])
+        return deformed_input_array, deformed_target_array
+
 class RandomFlip(object):
     """ Reverse image array randomly on each axis."""
     def __call__(self, input_image_array: np.ndarray, target_image_array: np.ndarray):
-        axis = [i for i in range(input_image_arrray.ndim) if randint(0, 1)]
+        axis = [i for i in range(input_image_array.ndim) if randint(0, 1)]
         flipped_input_array  = np.flip(input_image_array, axis=axis)
         flipped_target_array = np.flip(target_image_array, axis=axis)
 
-        return flipped_image_array, flipped_target_array
+        return flipped_input_array, flipped_target_array
 
 class AdjustDimensionality(object):
     def __init__(self, input_ndim=3, target_ndim=3, direction="head"):
@@ -200,4 +219,13 @@ if __name__ == "__main__":
     target_file_npy = "/Users/tanimotoryou/Desktop/test.npy"
 
     ia = sitk.GetArrayFromImage(sitk.ReadImage(input_file_gz))
+    
+    rf = ElasticTransform()
+    a, b = rf(ia[100,...], ia[100,...])
+    a = sitk.GetImageFromArray(a)
+    b = sitk.GetImageFromArray(b)
+    c = sitk.GetImageFromArray(ia[100,...])
+    sitk.WriteImage(c, "/Users/tanimotoryou/Desktop/c.mha")
+    sitk.WriteImage(a, "/Users/tanimotoryou/Desktop/a.mha")
+    sitk.WriteImage(b, "/Users/tanimotoryou/Desktop/b.mha")
 
