@@ -28,8 +28,8 @@ class RandomRotate90(object):
     """ Rotate image array by 90 degree randomly on each axis."""
     def __call__(self, input_image_array: np.ndarray, target_image_array: np.ndarray):
         if randint(0, 1):
-            rotated_input_array  = np.rot90(input_image_array)
-            rotated_target_array = np.rot90(target_image_array)
+            rotated_input_array  = np.rot90(input_image_array).copy()
+            rotated_target_array = np.rot90(target_image_array).copy()
 
         else:
             rotated_input_array  = input_image_array
@@ -46,8 +46,8 @@ class RandomFlip(object):
     """ Reverse image array randomly on each axis."""
     def __call__(self, input_image_array: np.ndarray, target_image_array: np.ndarray):
         axis = [i for i in range(input_image_array.ndim) if randint(0, 1)]
-        flipped_input_array  = np.flip(input_image_array, axis=axis)
-        flipped_target_array = np.flip(target_image_array, axis=axis)
+        flipped_input_array  = np.flip(input_image_array, axis=axis).copy()
+        flipped_target_array = np.flip(target_image_array, axis=axis).copy()
 
         return flipped_input_array, flipped_target_array
 

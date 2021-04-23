@@ -1,4 +1,4 @@
-from preprocessing import *
+from .preprocessing import *
 
 class Pix2PixTransform():
     def __init__(self):
@@ -14,11 +14,11 @@ class Pix2PixTransform():
         self.transforms = {
                 "train" : Compose([
                     LoadMultipleData(),
-                    ElasticTransform(),
                     MinMaxStandardize(
                         min_value = -300, 
                         max_value = 300
                         ),
+                    #ElasticTransform(),
                     Clip([256, 256]),
                     RandomFlip(),
                     RandomRotate90(),
