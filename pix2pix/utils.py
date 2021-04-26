@@ -76,6 +76,9 @@ def defineG(input_ch=1, output_ch=1, ngf=64, G_name="unet_256", norm="batch", us
     if G_name == "unet_256":
         net = UNetGenerator(input_ch, output_ch, 8, ngf, norm_layer=norm_layer, use_dropout=use_dropout)
 
+    elif G_name == "unet_512":
+        net = UNetGenerator(input_ch, output_ch, 9, ngf, norm_layer=norm_layer, use_dropout=use_dropout)
+
     elif G_name == "unet_128":
         net = UNetGenerator(input_ch, output_ch, 7, ngf, norm_layer=norm_layer, use_dropout=use_dropout)
 
@@ -102,6 +105,8 @@ def defineD(input_ch=2, ndf=64, D_name="PatchGAN", n_layers=3, norm="batch", ini
     net = None
     norm_layer = getNormLayer(norm_type=norm)
     if D_name == "PatchGAN":
+        net = NLayerDiscriminator(input_ch, ndf, n_layers=3, norm_layer=norm_layer)
+    elif D_name == "n_layers":
         net = NLayerDiscriminator(input_ch, ndf, n_layers=n_layers, norm_layer=norm_layer)
     
     else:

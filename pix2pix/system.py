@@ -2,6 +2,7 @@ from math import log10
 import pytorch_lightning as pl
 from torch import nn
 import torch
+from torch.optim.lr_scheduler import StepLR
 from torch.utils.data import DataLoader
 from .utils import defineG, defineD
 from .dataset import Pix2PixDataset
@@ -15,7 +16,7 @@ class Pix2PixSystem(pl.LightningModule):
     Parameters: 
 
     """
-    def __init__(self, dataset_path=None, criteria=None, log_path=None, l1_lambda=100., lr=0.001, batch_size=3, num_workers=6, G_input_ch=1, G_output_ch=1, G_name="unet_256", D_input_ch=2, D_name="PatchGAN", ngf=64, gpu_ids=[]):
+    def __init__(self, dataset_path=None, criteria=None, log_path=None, l1_lambda=100., lr=0.001, batch_size=3, num_workers=6, G_input_ch=1, G_output_ch=1, G_name="unet_256", D_input_ch=2, D_name="PatchGAN", D_n_layers=3,  ngf=64, gpu_ids=[]):
         super(Pix2PixSystem, self).__init__()
 
         self.dataset_path  = dataset_path
@@ -41,6 +42,7 @@ class Pix2PixSystem(pl.LightningModule):
                                 input_ch = D_input_ch,
                                 ndf      = ngf,
                                 D_name   = D_name,
+                                n_layers = D_n_layers,
                                 gpu_ids  = gpu_ids
                                 )
         self.loss_fun_gan  = GANLoss()
@@ -98,11 +100,14 @@ class Pix2PixSystem(pl.LightningModule):
             callback(avg_psnr, self.generator, self.current_epoch)
 
     def configure_optimizers(self):
-        self.g_optimizer = torch.optim.Adam(self.generator.parameters(), lr=self.lr)
-        self.d_optimizer = torch.optim.Adam(self.discriminator.parameters(), lr=self.lr)
+        g_optimizer = torch.optim.Adam(self.generator.parameters(), lr=self.lr)
+        d_optimizer = torch.optim.Adam(self.discriminator.parameters(), lr=self.lr)
+        g_scheduler = StepLR(g_optimizer, step_size=50, gamma=0.5)
+        d_scheduler = StepLR(d_optimizer, step_size=50, gamma=0.5)
         
-        optimizer_list = [self.g_optimizer, self.d_optimizer]
-        return optimizer_list
+        optimizer_list = [g_optimizer, d_optimizer]
+        scheduler_list = [g_scheduler, d_scheduler]
+        return optimizer_list#, scheduler_list
 
     def train_dataloader(self):
         train_dataset = Pix2PixDataset(
