@@ -3,6 +3,9 @@ import SimpleITK as sitk
 import numpy as np
 import elasticdeform
 from random import randrange, randint
+import sys
+sys.path.append("..")
+from utils.imageProcessing.cropping import croppingForNumpy
 
 class Compose(object):
     def __init__(self, transforms):
@@ -23,6 +26,42 @@ class Compose(object):
         for transform in self.transforms:
             input_image, target_image = transform(input_image, target_image)
         return input_image, target_image
+
+class CropImageAlongAxis(object):
+    def __init__(self, image_width=1, target_width=1, axis=0):
+        """ Crop image along axis. 
+        [ex] When width = 1 and axis = 0, 3-512-512 -> 1-512-512
+
+        Parameters: 
+            image_width  (int) -- Image width after cropping along axis.
+            target_width (int) -- Target width after cropping along axis.
+            axis (int)         --  Crop direction.
+
+        """
+
+        self.image_width  = image_width
+        self.target_width = target_width
+        self.axis         = axis
+
+    def __call__(self, input_array, target_array):
+        ndim = input_array.ndim
+
+        input_size  = input_array[self.axis]
+        target_size = target_array[self.axis]
+
+        input_diff  = input_size - self.image_width
+        target_diff = target_size - self.target_width
+
+        input_lower_size  = np.insert([0] * (ndim - 1), self.axis, input_diff // 2)
+        input_upper_size  = np.insert([0] * (ndim - 1), self.axis, (input_diff + 1) // 2)
+        target_lower_size = np.insert([0] * (ndim - 1), self.axis, target_diff // 2)
+        target_upper_size = np.insert([0] * (ndim - 1), self.axis, (target_diff + 1) // 2)
+
+        cropped_input_array  = croppingForNumpy(input_array, input_lower_size, input_upper_size)
+        cropped_target_array = croppingForNumpy(target_array, target_lower_size, target_upper_size)
+
+        return cropped_input_array, cropped_target_array
+        
 
 class RandomRotate90(object):
     """ Rotate image array by 90 degree randomly on each axis."""

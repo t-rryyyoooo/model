@@ -73,6 +73,11 @@ class SavePredImages(object):
             else:
                 pred_array = np.squeeze(arrays[input_or_target])
 
+            if pred_array.ndim > 2:
+                d = pred_array.size()[0] - 1
+                pred_array = pred_array[d//2 : (d+1)//2*-1, ...]
+                pred_array = np.squeeze(pred_array)
+
 
             if (i + 1) % num_columns == 0:
                 temp_pred_list.append(pred_array)

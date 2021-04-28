@@ -17,9 +17,9 @@ class UNetModel(nn.Module):
         self.contracts = []
         self.expands = []
 
-        self.first_contract = FirstConvBlock(in_channel_img, in_channel_coord, 64, 128, n=2, use_bn=use_bn)
+        self.first_contract = FirstConvBlock(in_channel_img, in_channel_coord, 32, 64, n=2, use_bn=use_bn)
 
-        contract = CreateConvBlock(128, 128, 128, n=2, use_bn=use_bn)
+        contract = CreateConvBlock(64, 64, 128, n=2, use_bn=use_bn)
         self.contracts.append(contract)
 
         contract = CreateConvBlock(128, 128, 256, n=2, use_bn=use_bn)
@@ -38,7 +38,7 @@ class UNetModel(nn.Module):
         expand = CreateUpConvBlock(256, 128, 128, 128, n=2, use_bn=use_bn)
         self.expands.append(expand)
          
-        expand = CreateUpConvBlock(128, 128, 64, 64, n=2, use_bn=use_bn)
+        expand = CreateUpConvBlock(128, 64, 64, 64, n=2, use_bn=use_bn)
         self.expands.append(expand)
 
         self.expands = nn.ModuleList(self.expands)

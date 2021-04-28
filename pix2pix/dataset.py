@@ -12,6 +12,7 @@ class Pix2PixDataset(data.Dataset):
 
         self.data_list = separateData(dataset_path, criteria, phase)
 
+
     def __len__(self):
         return len(self.data_list)
 

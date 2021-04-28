@@ -45,6 +45,7 @@ class Pix2PixSystem(pl.LightningModule):
                                 n_layers = D_n_layers,
                                 gpu_ids  = gpu_ids
                                 )
+        self.D_input_ch    = D_input_ch
         self.loss_fun_gan  = GANLoss()
         self.loss_func_l1  = nn.L1Loss()
         self.loss_func_mse = nn.MSELoss()
@@ -57,6 +58,12 @@ class Pix2PixSystem(pl.LightningModule):
         real_input  = real_input.float()
         real_target = real_target.float()
         fake = self.generator(real_input)
+        
+        """ Crop image if the number of channel of D's input and the one of fed image are not same. """
+        ch_diff = real_input.size()[1] - (self.D_input_ch - real_target.size()[1])
+        if ch_diff != 0:
+            real_input = real_input[:, ch_diff//2 : (ch_diff + 1)//2 * -1, ...]
+
         real_fake = torch.cat((real_input, fake), 1)
         pred_fake = self.discriminator.forward(real_fake)
 
