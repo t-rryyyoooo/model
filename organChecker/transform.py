@@ -14,37 +14,27 @@ class OrganCheckerTransform():
         self.transforms = {
                 "train" : Compose([
                     LoadMultipleData(),
-                    TransformSegToOrganExist(),
                     MinMaxStandardize(
                         min_value = -300, 
                         max_value = 300
                         ),
                     AdjustDimensionality(
                         input_ndim  = 3,
-                        target_ndim = 1
-                        )
+                        target_ndim = 2
+                        ),
+                    TransformSegToOrganExist(),
                     ]),
                 "val" : Compose([
                     LoadMultipleData(),
-                    TransformSegToOrganExist(),
                     MinMaxStandardize(
                         min_value = -300, 
                         max_value = 300
                         ),
                     AdjustDimensionality(
                         input_ndim  = 3,
-                        target_ndim = 1
-                        )
-                    ]),
-                "test" : Compose([
-                    MinMaxStandardize(
-                        min_value = -300, 
-                        max_value = 300
+                        target_ndim = 2
                         ),
-                    AdjustDimensionality(
-                        input_ndim  = 4,
-                        target_ndim = 1
-                        )
+                    TransformSegToOrganExist(),
                     ])
                 }
 

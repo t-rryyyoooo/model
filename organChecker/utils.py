@@ -1,5 +1,8 @@
 import torchvision
+from torch import nn
 from pathlib import Path
+import re
+from efficientnet_pytorch import EfficientNet
 
 def separateData(dataset_path, criteria, phase, input_name="input*", target_name="target*"): 
     """ Extract data path based on criteria.
@@ -50,22 +53,44 @@ def separateData(dataset_path, criteria, phase, input_name="input*", target_name
     return dataset
 
 
-def defineModel(name):
+def defineModel(name, in_ch=1):
     """ Create and return a generator.
 
     Parameters:
         name (str) -- Model name. [resnet50]
     """
+
     if name == "resnet50":
-       model = torchvision.models.resnet50(progress=True) 
+        model = torchvision.models.resnet50() 
+        model.conv1.weight = nn.Parameter(model.conv1.weight.sum(dim=in_ch).unsqueeze(1))
+        model.fc = nn.Linear(2048, 1)
+
+    elif name == "resnet18":
+        model = torchvision.models.resnet18() 
+        model.conv1.weight = nn.Parameter(model.conv1.weight.sum(dim=in_ch).unsqueeze(1))
+        model.fc = nn.Linear(512, 1)
+
+
+    elif name == "resnet152":
+        model = torchvision.models.resnet152()
+        model.conv1.weight = nn.Parameter(model.conv1.weight.sum(dim=in_ch).unsqueeze(1))
+        model.fc = nn.Linear(2048, 1)
+
+    elif re.fullmatch("efficientnet-b[0-7]", name):
+        model = EfficientNet.from_name(name, in_channels=1)
+        model._fc = nn.Linear(model._fc.in_features, 1)
+
 
     else:
         raise NotImplementedError("'{}' is not supported.".format(name))
 
+    return model
+
 def recall(pred, true):
+    eps = 10**-9
     tp_fn = true.sum()
     tp    = ((true == pred) * true).sum()
 
-    score = tp / tp_fn
+    score = tp / (tp_fn + eps)
 
     return score

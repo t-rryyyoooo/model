@@ -11,7 +11,7 @@ from .utils import recall, defineModel
 class OrganCheckerSystem(pl.LightningModule):
     """ Define ResNet50 learning flow. """
 
-    def __init__(self, dataset_path=None, criteria=None, log_path=None, model_name="resnet50", lr=0.001, batch_size=3, num_workers=6, gpu_ids=[]):
+    def __init__(self, dataset_path=None, criteria=None, log_path=None, in_ch=1, model_name="resnet50", lr=0.001, batch_size=3, num_workers=6, gpu_ids=[]):
         super(OrganCheckerSystem, self).__init__()
 
         self.dataset_path  = dataset_path
@@ -20,7 +20,7 @@ class OrganCheckerSystem(pl.LightningModule):
                             LatestModelCheckpoint(log_path),
                             BestModelCheckpoint(log_path)
                             ]
-        self.model         = defineModel(model_name)
+        self.model         = defineModel(model_name, in_ch=in_ch)
         self.batch_size    = batch_size
         self.lr            = lr
         self.num_workers   = num_workers
@@ -29,37 +29,37 @@ class OrganCheckerSystem(pl.LightningModule):
     def forward(self, x):
         return self.model(x)
 
-    def training_step(self, batch, batch_idx, optimizer_idx):
+    def training_step(self, batch, batch_idx):
         image, label = batch
         image = image.float()
         label = label.float()
 
-        pred = self.forward(image)
+        pred = torch.squeeze(self.forward(image))
 
         pred_onehot = (pred > 0.5).float()
         
-        loss   = self.loss(pred, label)
-        recall = recall(pred, pred_onehot)
+        loss         = self.loss(pred, label)
+        recall_score = recall(pred_onehot, label)
 
-        self.log("loss", loss, on_step=False, on_epoch=True)
-        self.log("recall", recall, on_step=False, on_epoch=True)
+        self.log("loss", loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("recall", recall_score, on_step=False, on_epoch=True, prog_bar=True)
         
         return loss
 
-    def validation_step(self, batch, batch_idx, optimizer_idx):
+    def validation_step(self, batch, batch_idx):
         image, label = batch
         image = image.float()
         label = label.float()
 
-        pred = self.forward(image)
+        pred = torch.squeeze(self.forward(image))
 
         pred_onehot = (pred > 0.5).float()
         
         loss   = self.loss(pred, label)
-        recall = recall(pred, pred_onehot)
+        recall_score = recall(pred_onehot, label)
 
-        self.log("val_loss", loss, on_step=False, on_epoch=True)
-        self.log("val_recall", recall, on_step=False, on_epoch=True)
+        self.log("val_loss", loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("val_recall", recall_score, on_step=False, on_epoch=True, prog_bar=True)
         
         return loss
 
