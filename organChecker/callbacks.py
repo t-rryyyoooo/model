@@ -1,6 +1,17 @@
 import cloudpickle
 from pathlib import Path
 
+class EveryEpochModelCheckpoint(object):
+    def __init__(self, save_directory):
+        self.save_directory= Path(save_directory)
+        self.save_directory.mkdir(parents=True, exist_ok=True)
+
+    def __call__(self, pred, model, epoch):
+        save_name = self.save_directory / "epoch_{:03d}_loss_{:.3f}.pkl".format(epoch, pred)
+        with open(save_name, "wb") as f:
+            cloudpickle.dump(model, f)
+
+
 class LatestModelCheckpoint(object):
     def __init__(self, save_directory, save_name="latest.pkl"):
         self.save_directory= Path(save_directory)

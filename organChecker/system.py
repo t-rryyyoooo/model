@@ -4,7 +4,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 from .dataset import OrganCheckerDataset
 from .transform import OrganCheckerTransform
-from .callbacks import LatestModelCheckpoint, BestModelCheckpoint
+from .callbacks import EveryEpochModelCheckpoint, LatestModelCheckpoint, BestModelCheckpoint
 from .utils import recall, defineModel
 
 
@@ -17,6 +17,7 @@ class OrganCheckerSystem(pl.LightningModule):
         self.dataset_path  = dataset_path
         self.criteria      = criteria
         self.callbacks     = [
+                            EveryEpochModelCheckpoint(log_path),
                             LatestModelCheckpoint(log_path),
                             BestModelCheckpoint(log_path)
                             ]
@@ -32,7 +33,7 @@ class OrganCheckerSystem(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         image, label = batch
         image = image.float()
-        label = label.float()
+        label = torch.squeeze(label).float()
 
         pred = torch.squeeze(self.forward(image))
 
@@ -49,13 +50,13 @@ class OrganCheckerSystem(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         image, label = batch
         image = image.float()
-        label = label.float()
+        label = torch.squeeze(label).float()
 
         pred = torch.squeeze(self.forward(image))
 
         pred_onehot = (pred > 0.5).float()
         
-        loss   = self.loss(pred, label)
+        loss         = self.loss(pred, label)
         recall_score = recall(pred_onehot, label)
 
         self.log("val_loss", loss, on_step=False, on_epoch=True, prog_bar=True)

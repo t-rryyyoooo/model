@@ -35,7 +35,19 @@ class OrganCheckerTransform():
                         target_ndim = 2
                         ),
                     TransformSegToOrganExist(),
+                    ]),
+                "test" : Compose([
+                    MinMaxStandardize(
+                        min_value = -300, 
+                        max_value = 300
+                        ),
+                    AdjustDimensionality(
+                        input_ndim  = 4,
+                        target_ndim = 2
+                        ),
+                    TransformSegToOrganExist(),
                     ])
+
                 }
 
     def __call__(self, phase, input_image, target_image):#phase: train/val
