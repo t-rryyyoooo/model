@@ -1,7 +1,7 @@
 import os
 import SimpleITK as sitk
 import numpy as np
-from random import randrange
+from random import randrange, uniform
 
 class Compose(object):
     def __init__(self, transforms):
@@ -56,18 +56,22 @@ class StackImages(object):
             return returned_array_list, target_array
 
 class MixImages(object):
-    def __init__(min_rate=-0.3, max_rate=0.3, constant_value=0.3, mode="dynamic"):
+    def __init__(self, target_numbers=[0, 1], min_rate=-0.3, max_rate=0.3, constant_value=0.3, mode="dynamic"):
         """ Mix voxel values of the two images.
         CT_new = (1 - alpha) * CT_0 + alpha * CT_1
         Then, alpa is determined by random.uniform(min_rate, max_rate) when mode is 'dynamic'.
         When mode is 'static', constant_value is substituted for alpha.
 
         Parameters:
+            target_numbers (list) -- The index of images to be stacked in image_array_list. [ex] target_numbers = [0,1] -> Mix image_array_list[0] and image_array_list[1]
             min_rate (float)       -- Minimum value of mixing ratio when mode is 'dynamic'.
             max_rate (float)       -- Maximum value of mixing ratio when mode is 'dynamic'.
             constant_value (float) -- Mixing ratio when mode is 'static'
             mode (str)             -- Whether alpha is changed every time this class is called. [dynamic / static]
         """
+
+        assert len(target_numbers) == 2
+        self.target_numbers = target_numbers
 
         self.min_rate = min_rate
         self.max_rate = max_rate
@@ -79,16 +83,23 @@ class MixImages(object):
         self.constant_value = constant_value
 
     def __call__(self, image_array_list, label_array):
-        assert len(image_array_list) == 2
+        indices = np.arange(len(image_array_list))
+        rest_indices = np.delete(indices, self.target_numbers)
+
         if self.mode == "dynamic":
             alpha = uniform(self.min_rate, self.max_rate)
 
         elif self.mode == "static":
             alpha = self.constant_value
 
-        mixed_image_array = (1 - alpha) * image_array_list[0] + alpha * image_array_list[1]
+        mixed_image_array = (1 - alpha) * image_array_list[self.target_numbers[0]] + alpha * image_array_list[self.target_numbers[1]]
 
-        return mixed_image_array, label_array
+        returned_array_list = [mixed_image_array] + list(np.array(image_array_list)[rest_indices])
+
+        if len(returned_array_list) == 1:
+            return returned_array_list[0], label_array
+        else:
+            return returned_array_list, label_array 
 
 class LoadMultipleData(object):
     def __init__(self):
@@ -385,28 +396,3 @@ class Clip(object):
         clipped_image_array = image_array[slices]
 
         return clipped_image_array
-
-if __name__ == "__main__":
-    image_1 = "/home/vmlab/Desktop/data/Abdomen/case_00/imaging_resampled_2_uni.nii.gz"
-    image_2 = "/home/vmlab/Desktop/data/Abdomen/case_00/translate_resampled_2_uni.mha"
-    image_3 = "/home/vmlab/Desktop/data/Abdomen/case_00/segmentation_resampled_2.nii.gz"
-
-    array_list = [image_1, image_2, image_1]
-    c = Compose([
-            LoadMultipleData(),
-            StackImages([0,2]),
-            ClipValues(
-                input_min_value = [-140,None],
-                input_max_value = [140, None],
-                target_min_value = None,
-                target_max_value = None
-                )
-            ])
-
-    a, s = c(array_list, image_3)
-
-    print(a[0].shape, a[0].min(), a[0].max())
-    print(a[1].shape, a[1].min(), a[1].max())
-    print(s.shape, s.min(), s.max())
-
-
