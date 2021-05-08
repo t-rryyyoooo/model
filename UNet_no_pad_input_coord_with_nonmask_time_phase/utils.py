@@ -46,14 +46,17 @@ def separateData(dataset_path, criteria, phase, rate=1.0):
         data_path = Path(dataset_path) / ("case_" + number) 
 
         image_list = data_path.glob("image*")
+        #feature_list = data_path.glob("coordinate*")
+        feature_list = data_path.glob("coord*")
         label_list = data_path.glob("label*")
         
         image_list = sorted(image_list)
+        feature_list = sorted(feature_list)
         label_list = sorted(label_list)
 
-        assert len(image_list) == len(label_list)
-        for img, lab in zip(image_list, label_list):
-            dataset.append((str(img), str(lab)))
+        assert len(image_list) == len(feature_list) == len(label_list)
+        for img, fea, lab in zip(image_list, feature_list, label_list):
+            dataset.append([(str(img), str(fea)), str(lab)])
 
     return dataset
 
@@ -99,9 +102,8 @@ def getMinimumValue(image):
     return minmax.GetMinimum()
 
 class DICE():
-    def __init__(self, num_class, device):
+    def __init__(self, num_class):
         self.num_class = num_class
-        self.device = device
         """
         Required : not onehot (after argmax)
         ex : [[0,1], [2,5],[10,11]]
@@ -110,10 +112,6 @@ class DICE():
     def compute(self, true, pred):
         eps = 10**-9
         assert true.size() == pred.size()
-        
-        true.to(self.device)
-        true.to(self.device)
-
         
         intersection = (true * pred).sum()
         union = (true * true).sum() + (pred * pred).sum()

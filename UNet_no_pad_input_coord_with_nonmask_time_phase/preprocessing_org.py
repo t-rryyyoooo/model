@@ -2,7 +2,7 @@ import SimpleITK as sitk
 import os
 import numpy as np
 from .utils import *
-from random import randint, uniform
+from random import randint
 
 class Compose(object):
     def __init__(self, transforms):
@@ -14,40 +14,48 @@ class Compose(object):
 
         return image, label
 
-class MixImages(object):
-    def __init__(min_rate=-0.3, max_rate=0.3, constant_value=0.3, mode="dynamic"):
-        """ Mix voxel values of the two images.
-        CT_new = (1 - alpha) * CT_0 + alpha * CT_1
-        Then, alpa is determined by random.uniform(min_rate, max_rate) when mode is 'dynamic'.
-        When mode is 'static', constant_value is substituted for alpha.
+class AdjustDimensionality(object):
+    def __init__(self, input_ndim=3, target_ndim=3, direction="head"):
+        """ Adjust an image dimensionality for feeding it to model.
 
-        Parameters: 
-            min_rate (float)       -- Minimum value of mixing ratio when mode is 'dynamic'.
-            max_rate (float)       -- Maximum value of mixing ratio when mode is 'dynamic'.
-            constant_value (float) -- Mixing ratio when mode is 'static'
-            mode (str)             -- Whether alpha is changed every time this class is called. [dynamic / static]
+        Paratemters: 
+            input_ndim (int)  -- the number of dimensions of the input image
+            target_ndim (int) -- the number of dimensions of the target image
+            direction (str)        -- Direction to add the dimension [head / tail]. Head means [np.newaxis, ...], tail means [..., np.newaxis].
         """
 
-        self.min_rate = min_rate
-        self.max_rate = max_rate
-        if mode not in ["dynamic", "static"]:
-            raise NotImplementedError("{} mode is not supported."format(mode))
+        self.input_ndim  = input_ndim
+        self.target_ndim = target_ndim
+        if direction in ["head",  "tail"]:
+            self.direction = direction
         else:
-            self.mode = mode
+            raise NotImplementedError("This argument [{}] is not supperted.".format(direction))
 
-        self.constant_value = constant_value
+    def __call__(self, input_image_array: np.ndarray, target_image_array: np.ndarray):
+        input_image_array  = self.addNDim(input_image_array, self.input_ndim, self.direction)
+        target_image_array = self.addNDim(target_image_array, self.target_ndim, self.direction)
 
-    def __call__(self, image_array_list, label_array):
-        assert len(image_array_list) == 2
-        if self.mode == "dynamic":
-            alpha = uniform(self.min_rate, self.max_rate)
+        return input_image_array, target_image_array
 
-        elif self.mode == "static":
-            alpha = self.constant_value
+    def addNDim(self, image_array, ndim, direction):
+        """ Add the number of dimensions of image_array to ndim.
 
-        mixed_image_array = (1 - alpha) * image_array_list[0] + alpha * image_array_list[1]
+        Parameters: 
+            image_array (np.array) -- image array.
+            ndim (int)             -- Desired number of dimensions
+            direction (str)        -- Direction to add the dimension [head / tail]. Head means [np.newaxis, ...], tail means [..., np.newaxis].
 
-        return mixed_image_array, label_array
+        Returns: 
+            image array added the number of dimensions to ndim.
+        """
+        while image_array.ndim < ndim:
+            if direction == "head":
+                image_array = image_array[np.newaxis, ...]
+            elif direction == "tail":
+                image_array = image_array[..., np.newaxis]
+
+        return image_array
+
 
 class LoadMultipleData(object):
     def __call__(self, image_file_list, label_file):
