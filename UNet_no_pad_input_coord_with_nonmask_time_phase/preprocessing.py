@@ -24,6 +24,7 @@ class Compose(object):
     def __call__(self, input_image_or_list, target_image):
         for transform in self.transforms:
             input_image_or_list, target_image = transform(input_image_or_list, target_image)
+
         return input_image_or_list, target_image
 
 class StackImages(object):

@@ -6,12 +6,17 @@ class UNetTransform():
         self.transforms = {
                 "train" : Compose([
                     LoadMultipleData(),
-                    #ClipValues(
-                    #    input_min_value  = [-300, -200],
-                    #    input_max_value  = [300, 500],
-                    #    target_min_value = -300,
-                    #    target_max_value = 300
-                    #    ),
+                    ClipValues(
+                        input_min_value  = [-300, -300, None],
+                        input_max_value  = [300, 300, None],
+                        target_min_value = None,
+                        target_max_value = None 
+                        ),
+                    MixImages(
+                        target_numbers = [0, 1],
+                        min_rate       = -0.3,
+                        max_rate       = 0.3
+                        ),
                     AdjustDimensionality(
                         input_ndim  = 4,
                         target_ndim = 3
@@ -19,24 +24,34 @@ class UNetTransform():
                     ]), 
                 "val" : Compose([
                     LoadMultipleData(),
-                    #ClipValue(
-                    #    input_min_value  = [-300, -200],
-                    #    input_max_value  = [300, 500],
-                    #    target_min_value = -300,
-                    #    target_max_value = 300
-                    #    ),
+                    ClipValues(
+                        input_min_value  = [-300, -300, None],
+                        input_max_value  = [300, 300, None],
+                        target_min_value = None,
+                        target_max_value = None 
+                        ),
+                    MixImages(
+                        target_numbers = [0, 1],
+                        mode           = "static",
+                        constant_value = 0.0
+                        ),
                     AdjustDimensionality(
                         input_ndim  = 4,
                         target_ndim = 3
                         )
                     ]),
                 "test" : Compose([
-                    #ClipValues(
-                    #    input_min_value  = [-300, -200],
-                    #    input_max_value  = [300, 500],
-                    #    target_min_value = -300,
-                    #    target_max_value = 300
-                    #    ),
+                    ClipValues(
+                        input_min_value  = [-300, -300, None],
+                        input_max_value  = [300, 300, None],
+                        target_min_value = None,
+                        target_max_value = None 
+                        ),
+                    MixImages(
+                        target_numbers = [0, 1],
+                        mode           = "static",
+                        constant_value = 0.0
+                        ),
                     AdjustDimensionality(
                         input_ndim  = 5,
                         target_ndim = 3
