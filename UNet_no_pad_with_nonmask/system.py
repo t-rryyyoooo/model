@@ -9,24 +9,27 @@ from .transform import UNetTransform
 from torch.utils.data import DataLoader
 from .utils import DICE
 from .loss import WeightedCategoricalCrossEntropy
+from .callbacks import EveryEpochModelCheckpoint, LatestModelCheckpoint, BestModelCheckpoint
 
 class UNetSystem(pl.LightningModule):
-    def __init__(self, dataset_mask_path, dataset_nonmask_path, criteria, rate, in_channel, num_class, learning_rate, batch_size, checkpoint, num_workers, dropout=0.5):
+    def __init__(self, dataset_mask_path, dataset_nonmask_path, log_path, criteria, rate, in_channel, num_class, learning_rate, batch_size, num_workers, dropout=0.5):
         super(UNetSystem, self).__init__()
-        use_cuda = torch.cuda.is_available() and True
-        self.device = torch.device("cuda" if use_cuda else "cpu")
-        self.dataset_mask_path = dataset_mask_path
+        self.dataset_mask_path    = dataset_mask_path
         self.dataset_nonmask_path = dataset_nonmask_path
-        self.num_class = num_class
-        self.model = UNetModel(in_channel, self.num_class, dropout=dropout).to(self.device, dtype=torch.float)
-        self.criteria = criteria
-        self.rate = rate
-        self.batch_size = batch_size
-        self.learning_rate = learning_rate
-        self.checkpoint = checkpoint
-        self.num_workers = num_workers
-        self.DICE = DICE(self.num_class, self.device)
-        self.loss = WeightedCategoricalCrossEntropy(device=self.device)
+        self.num_class            = num_class
+        self.model                = UNetModel(in_channel, self.num_class, dropout=dropout)
+        self.criteria             = criteria
+        self.rate                 = rate
+        self.batch_size           = batch_size
+        self.learning_rate        = learning_rate
+        self.num_workers          = num_workers
+        self.DICE                 = DICE(self.num_class)
+        self.loss                 = WeightedCategoricalCrossEntropy()
+        self.callbacks            = [
+                                    LatestModelCheckpoint(log_path),
+                                    BestModelCheckpoint(log_path),
+                                    EveryEpochModelCheckpoint(log_path)
+                                    ]
 
     def forward(self, x):
         x = self.model(x)
@@ -38,98 +41,65 @@ class UNetSystem(pl.LightningModule):
         label : not onehot 
         """
         image, label = batch
-        image = image.to(self.device, dtype=torch.float)
-        label = label.to(self.device, dtype=torch.long)
+        image = image.float()
+        label = label.long()
 
-        pred = self.forward(image).to(self.device)
-        
+        pred = self.forward(image)
 
         """ Onehot for loss. """
         pred_argmax = pred.argmax(dim=1)
-        label_onehot = torch.eye(self.num_class)[label].to(self.device).permute((0, 4, 1, 2, 3))
+        label_onehot = torch.eye(self.num_class)[label].permute((0, 4, 1, 2, 3))
 
         dice = self.DICE.compute(label, pred_argmax)
         loss = self.loss(pred, label_onehot)
+
+        self.log("loss", loss, on_step=False, on_epoch=True)
+        self.log("dice", dice, on_step=False, on_epoch=True)
         
-        return {"loss" : loss, "dice" : dice}
-
-    def training_epoch_end(self, outputs):
-        avg_loss = torch.stack([x["loss"] for x in outputs]).mean()
-        avg_dice = torch.stack([x["dice"] for x in outputs]).mean()
-
-        self.checkpoint(avg_loss.item(), self.model)
-
-        tensorboard_logs = {
-                "loss" : avg_loss,
-                "dice" : avg_dice, 
-                }
-        progress_bar = {
-                "loss" : avg_loss,
-                "dice" : avg_dice
-                }
-
-
-        return {"avg_loss" : avg_loss, "log" : tensorboard_logs, "progress_bar" : progress_bar}
-
+        return loss
 
     def validation_step(self, batch, batch_idx):
         """
         label : not onehot 
         """
         image, label = batch
-        image = image.to(self.device, dtype=torch.float)
-        label = label.to(self.device, dtype=torch.long)
+        image = image.float()
+        label = label.long()
 
-        pred = self.forward(image).to(self.device)
+        pred = self.forward(image)
         
 
         """ Onehot for loss. """
         pred_argmax = pred.argmax(dim=1)
-        label_onehot = torch.eye(self.num_class)[label].to(self.device).permute((0, 4, 1, 2, 3))
+        label_onehot = torch.eye(self.num_class)[label].permute((0, 4, 1, 2, 3))
 
         dice = self.DICE.compute(label, pred_argmax)
         loss = self.loss(pred, label_onehot)
 
-        return {"val_loss" : loss, "val_dice" : dice}
+        self.log("val_loss", loss, on_step=False, on_epoch=True)
+        self.log("val_dice", dice, on_step=False, on_epoch=True)
+
+        return loss
 
     def validation_epoch_end(self, outputs):
-        avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
-        avg_dice = torch.stack([x["val_dice"] for x in outputs]).mean()
+        avg = torch.stack([x for x in outputs]).mean()
 
-        self.checkpoint(avg_loss.item(), self.model)
-
-        tensorboard_logs = {
-                "val_loss" : avg_loss,
-                "val_dice" : avg_dice, 
-                }
-        progress_bar = {
-                "val_loss" : avg_loss,
-                "val_dice" : avg_dice
-                }
-
-
-        return {"avg_val_loss" : avg_loss, "log" : tensorboard_logs, "progress_bar" : progress_bar}
+        for callback in self.callbacks:
+            callback(avg, self.model, self.current_epoch)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
 
         return optimizer
 
-    @pl.data_loader
     def train_dataloader(self):
-        translate = 0.0
-        rotate = 0
-        shear = 0.0
-        scale = 0.0
-        batch_size = self.batch_size
-
         train_dataset = UNetDataset(
                 dataset_mask_path = self.dataset_mask_path,
                 dataset_nonmask_path = self.dataset_nonmask_path,
                 phase = "train", 
                 criteria = self.criteria,
                 rate = self.rate,
-                transform = UNetTransform(self.num_class, translate, rotate, shear, scale)
+                transform = UNetTransform()
                 )
 
         train_loader = DataLoader(
@@ -141,7 +111,6 @@ class UNetSystem(pl.LightningModule):
 
         return train_loader
 
-    @pl.data_loader
     def val_dataloader(self):
         val_dataset = UNetDataset(
                 dataset_mask_path = self.dataset_mask_path,
@@ -149,7 +118,7 @@ class UNetSystem(pl.LightningModule):
                 phase = "val", 
                 criteria = self.criteria,
                 rate = self.rate,
-                transform = UNetTransform(self.num_class)
+                transform = UNetTransform()
                 )
 
         val_loader = DataLoader(
