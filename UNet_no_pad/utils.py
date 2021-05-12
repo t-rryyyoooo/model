@@ -2,6 +2,7 @@ import SimpleITK as sitk
 import numpy as np
 from pathlib import Path
 import torch
+import random
 
 def setMeta(to_image, ref_image, direction=None, origin=None, spacing=None):
     if direction is None:
@@ -19,9 +20,29 @@ def setMeta(to_image, ref_image, direction=None, origin=None, spacing=None):
 
     return to_image
 
-def separateData(dataset_path, criteria, phase): 
+def separateDataWithNonMask(dataset_mask_path, dataset_nonmask_path, criteria, phase, rate={"train":{"mask":1.0, "nonmask":0.07}, "val":{"mask":0.1, "nonmask":0.1}}):
+    """
+    rate = {
+        'train' : {'mask' : 1.0, 'nonmask' : 0.07},
+        'val' : {'mask : 0.1, 'nonmask' : 0.04}
+        }
+    """
+
+    dataset_mask_path = separateData(dataset_mask_path, criteria, phase, rate[phase]["mask"])
+    dataset_nonmask_path = separateData(dataset_nonmask_path, criteria, phase, rate[phase]["nonmask"])
+
+    dataset = dataset_mask_path + dataset_nonmask_path
+    print("phase:", phase)
+    print("The number of mask dataset:", len(dataset_mask_path))
+    print("The number of nonmask dataset:", len(dataset_nonmask_path))
+    print("The number of all of dataset:", len(dataset))
+
+    return dataset
+
+def separateData(dataset_path, criteria, phase, rate=1.0): 
     dataset = []
-    for number in criteria[phase]:
+    random.shuffle(criteria[phase])
+    for number in criteria[phase][:int(len(criteria[phase]) * rate)]:
         data_path = Path(dataset_path) / ("case_" + number) 
 
         image_list = data_path.glob("image*")
@@ -30,6 +51,7 @@ def separateData(dataset_path, criteria, phase):
         image_list = sorted(image_list)
         label_list = sorted(label_list)
 
+        assert len(image_list) == len(label_list)
         for img, lab in zip(image_list, label_list):
             dataset.append((str(img), str(lab)))
 
@@ -77,21 +99,16 @@ def getMinimumValue(image):
     return minmax.GetMinimum()
 
 class DICE():
-    def __init__(self, num_class, device):
+    def __init__(self, num_class):
         self.num_class = num_class
-        self.device = device
         """
-        Required : not onehot (after argmax)
+        Required : not onehot (after argmax) if multi label segmentation
         ex : [[0,1], [2,5],[10,11]]
         """
 
     def compute(self, true, pred):
         eps = 10**-9
         assert true.size() == pred.size()
-        
-        true.to(self.device)
-        true.to(self.device)
-
         
         intersection = (true * pred).sum()
         union = (true * true).sum() + (pred * pred).sum()
