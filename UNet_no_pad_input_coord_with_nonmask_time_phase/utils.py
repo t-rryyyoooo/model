@@ -46,14 +46,19 @@ def separateData(dataset_path, criteria, phase, rate=1.0):
         data_path = Path(dataset_path) / ("case_" + number) 
 
         image_list = data_path.glob("image*")
+        trans_list = data_path.glob("trans*")
+        #feature_list = data_path.glob("coordinate*")
+        feature_list = data_path.glob("coord*")
         label_list = data_path.glob("label*")
         
         image_list = sorted(image_list)
+        trans_list = sorted(trans_list)
+        feature_list = sorted(feature_list)
         label_list = sorted(label_list)
 
-        assert len(image_list) == len(label_list)
-        for img, lab in zip(image_list, label_list):
-            dataset.append((str(img), str(lab)))
+        assert len(image_list) == len(trans_list) == len(feature_list) == len(label_list)
+        for img, tra, fea, lab in zip(image_list, trans_list, feature_list, label_list):
+            dataset.append([(str(img), str(tra), str(fea)), str(lab)])
 
     return dataset
 
@@ -102,7 +107,7 @@ class DICE():
     def __init__(self, num_class):
         self.num_class = num_class
         """
-        Required : not onehot (after argmax) if multi label segmentation
+        Required : not onehot (after argmax)
         ex : [[0,1], [2,5],[10,11]]
         """
 

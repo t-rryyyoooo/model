@@ -59,11 +59,6 @@ class Pix2PixSystem(pl.LightningModule):
         real_target = real_target.float()
         fake = self.generator(real_input)
         
-        """ Crop image if the number of channel of D's input and the one of fed image are not same. """
-        ch_diff = real_input.size()[1] - (self.D_input_ch - real_target.size()[1])
-        if ch_diff != 0:
-            real_input = real_input[:, ch_diff//2 : (ch_diff + 1)//2 * -1, ...]
-
         real_fake = torch.cat((real_input, fake), 1)
         pred_fake = self.discriminator.forward(real_fake)
 
