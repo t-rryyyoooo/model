@@ -47,9 +47,9 @@ class StackImages(object):
 
         rest_indices = np.delete(indices, target_numbers)
 
-        concated_image_array = np.stack(np.array(image_array_list)[target_numbers])
+        concated_image_array = np.stack([image_array_list[t] for t in target_numbers])
 
-        returned_array_list = [concated_image_array] + list(np.array(image_array_list)[rest_indices])
+        returned_array_list = [concated_image_array] + [image_array_list[r] for r in rest_indices]
 
         if len(returned_array_list) == 1:
             return returned_array_list[0], target_array
@@ -95,7 +95,7 @@ class MixImages(object):
 
         mixed_image_array = (1 - alpha) * image_array_list[self.target_numbers[0]] + alpha * image_array_list[self.target_numbers[1]]
 
-        returned_array_list = [mixed_image_array] + list(np.array(image_array_list)[rest_indices])
+        returned_array_list = [mixed_image_array] + [image_array_list[r] for r in rest_indices]
 
         if len(returned_array_list) == 1:
             return returned_array_list[0], label_array
