@@ -76,7 +76,7 @@ def defineModel(name, in_ch=1):
         model.conv1.weight = nn.Parameter(model.conv1.weight.sum(dim=in_ch).unsqueeze(1))
         model.fc = nn.Linear(2048, 1)
 
-    elif re.fullmatch("efficientnet-b[0-7]", name):
+    elif re.fullmatch("efficientnet-b[0-8]", name) or re.fullmatch("efficientnet-l2", name):
         model = EfficientNet.from_name(name, in_channels=1)
         model._fc = nn.Linear(model._fc.in_features, 1)
 

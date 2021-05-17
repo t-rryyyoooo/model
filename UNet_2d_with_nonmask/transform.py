@@ -6,7 +6,7 @@ class UNetTransform():
                 "train" : Compose([
                     LoadMultipleData(),
                     AdjustDimensionality(
-                        input_ndim  = 4,
+                        input_ndim  = 3,
                         target_ndim = 3
                         )
                     ]), 
@@ -14,14 +14,14 @@ class UNetTransform():
                 "val" : Compose([
                     LoadMultipleData(),
                     AdjustDimensionality(
-                        input_ndim  = 4,
+                        input_ndim  = 3,
                         target_ndim = 3
                         )
                     ]),
                 "test" : Compose([
                     GetArrayFromImages(),
                     AdjustDimensionality(
-                        input_ndim  = 5,
+                        input_ndim  = 4,
                         target_ndim = 3
                         )
                     ])

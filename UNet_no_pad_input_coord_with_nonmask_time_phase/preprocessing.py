@@ -47,9 +47,9 @@ class StackImages(object):
 
         rest_indices = np.delete(indices, target_numbers)
 
-        concated_image_array = np.stack(np.array(image_array_list)[target_numbers])
+        concated_image_array = np.stack([image_array_list[t] for t in target_numbers])
 
-        returned_array_list = [concated_image_array] + list(np.array(image_array_list)[rest_indices])
+        returned_array_list = [concated_image_array] + [image_array_list[r] for r in rest_indices]
 
         if len(returned_array_list) == 1:
             return returned_array_list[0], target_array
@@ -95,7 +95,7 @@ class MixImages(object):
 
         mixed_image_array = (1 - alpha) * image_array_list[self.target_numbers[0]] + alpha * image_array_list[self.target_numbers[1]]
 
-        returned_array_list = [mixed_image_array] + list(np.array(image_array_list)[rest_indices])
+        returned_array_list = [mixed_image_array] + [image_array_list[r] for r in rest_indices]
 
         if len(returned_array_list) == 1:
             return returned_array_list[0], label_array
@@ -165,33 +165,6 @@ class LoadNpy(object):
         if len(input_image_array_list) == 1:
             return input_image_array_list[0], target_image_array
 
-        else:
-            return input_image_array_list, target_image_array
-
-class GetArrayFromImages(object):
-    def __init__(self):
-        """ Translate image to array. 
-        
-        Returns: 
-            np.ndarray, np.ndarray or [np.ndarray, ...], np.ndarray
-        """
-
-    def __call__(self, input_image_or_list, target_image):
-        target_image_array = sitk.GetArrayFromImage(target_image)
-
-        if isinstance(input_image_or_list, sitk.Image):
-            input_image_list = [input_image_or_list]
-        else:
-            input_image_list = input_image_or_list
-
-        input_image_array_list = []
-        for input_image in input_image_list:
-            input_image_array = sitk.GetArrayFromImage(input_image)
-
-            input_image_array_list.append(input_image_array)
-
-        if len(input_image_array_list) == 1:
-            return input_image_array_list[0], target_image_array
         else:
             return input_image_array_list, target_image_array
 

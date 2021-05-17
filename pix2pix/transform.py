@@ -18,10 +18,10 @@ class Pix2PixTransform():
                         min_value = -300, 
                         max_value = 300
                         ),
-                    #ElasticTransform(),
-                    #Clip([256, 256]),
-                    #RandomFlip(),
-                    #RandomRotate90(),
+                    ElasticTransform(),
+                    Clip([256, 256]),
+                    RandomFlip(),
+                    RandomRotate90(),
                     AdjustDimensionality(
                         input_ndim  = 3,
                         target_ndim = 3

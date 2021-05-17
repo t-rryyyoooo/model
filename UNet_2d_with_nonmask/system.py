@@ -48,7 +48,7 @@ class UNetSystem(pl.LightningModule):
 
         """ Onehot for loss. """
         pred_argmax = pred.argmax(dim=1)
-        label_onehot = torch.eye(self.num_class)[label].permute((0, 4, 1, 2, 3))
+        label_onehot = torch.eye(self.num_class)[label].permute((0, 3, 1, 2))
 
         dice = self.DICE.compute(label, pred_argmax)
         loss = self.loss(pred, label_onehot)
@@ -71,7 +71,7 @@ class UNetSystem(pl.LightningModule):
 
         """ Onehot for loss. """
         pred_argmax = pred.argmax(dim=1)
-        label_onehot = torch.eye(self.num_class)[label].permute((0, 4, 1, 2, 3))
+        label_onehot = torch.eye(self.num_class)[label].permute((0, 3, 1, 2))
 
         dice = self.DICE.compute(label, pred_argmax)
         loss = self.loss(pred, label_onehot)

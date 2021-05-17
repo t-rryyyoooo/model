@@ -9,15 +9,16 @@ from .transform import UNetTransform
 from torch.utils.data import DataLoader
 from .utils import DICE
 from .loss import WeightedCategoricalCrossEntropy
-from .callbacks import EveryEpochModelCheckpoint, LatestModelCheckpoint, BestModelCheckpoint
+from .callbacks import *
 
 class UNetSystem(pl.LightningModule):
-    def __init__(self, dataset_mask_path, dataset_nonmask_path, log_path, criteria, rate, in_channel, num_class, learning_rate, batch_size, num_workers, dropout=0.5):
+    def __init__(self, dataset_mask_path, dataset_nonmask_path, log_path, criteria, rate, in_channel_img, in_channel_coord, num_class, learning_rate, batch_size, num_workers, dropout=0.5):
         super(UNetSystem, self).__init__()
         self.dataset_mask_path    = dataset_mask_path
         self.dataset_nonmask_path = dataset_nonmask_path
+        self.log_path             = log_path
         self.num_class            = num_class
-        self.model                = UNetModel(in_channel, self.num_class, dropout=dropout)
+        self.model                = UNetModel(in_channel_img, in_channel_coord, self.num_class, dropout=dropout)
         self.criteria             = criteria
         self.rate                 = rate
         self.batch_size           = batch_size
@@ -26,13 +27,13 @@ class UNetSystem(pl.LightningModule):
         self.DICE                 = DICE(self.num_class)
         self.loss                 = WeightedCategoricalCrossEntropy()
         self.callbacks            = [
-                                    LatestModelCheckpoint(log_path),
-                                    BestModelCheckpoint(log_path),
-                                    EveryEpochModelCheckpoint(log_path)
-                                    ]
+                EveryEpochModelCheckpoint(log_path),
+                LatestModelCheckpoint(log_path),
+                BestModelCheckpoint(log_path)
+                ]
 
-    def forward(self, x):
-        x = self.model(x)
+    def forward(self, x_img, x_coord):
+        x = self.model(x_img, x_coord)
 
         return x
 
@@ -40,38 +41,37 @@ class UNetSystem(pl.LightningModule):
         """
         label : not onehot 
         """
-        image, label = batch
-        image = image.float()
+        images, label = batch
+        images = [image.float() for image in images]
         label = label.long()
 
-        pred = self.forward(image)
+        pred = self.forward(*images)
+        
 
-        """ Onehot for loss. """
         pred_argmax = pred.argmax(dim=1)
-        label_onehot = torch.eye(self.num_class)[label].permute((0, 4, 1, 2, 3))
+        label_onehot = torch.eye(self.num_class)[label].permute(0, 4, 1, 2, 3)
 
         dice = self.DICE.compute(label, pred_argmax)
         loss = self.loss(pred, label_onehot)
 
         self.log("loss", loss, on_step=False, on_epoch=True)
         self.log("dice", dice, on_step=False, on_epoch=True)
-        
-        return loss
 
+        return loss
+        
     def validation_step(self, batch, batch_idx):
         """
         label : not onehot 
         """
-        image, label = batch
-        image = image.float()
+        images, label = batch
+        images = [image.float() for image in images]
         label = label.long()
 
-        pred = self.forward(image)
-        
+        label_onehot = torch.eye(self.num_class)[label].permute(0, 4, 1, 2, 3)
 
-        """ Onehot for loss. """
+        pred = self.forward(*images)
+        
         pred_argmax = pred.argmax(dim=1)
-        label_onehot = torch.eye(self.num_class)[label].permute((0, 4, 1, 2, 3))
 
         dice = self.DICE.compute(label, pred_argmax)
         loss = self.loss(pred, label_onehot)
@@ -94,8 +94,8 @@ class UNetSystem(pl.LightningModule):
 
     def train_dataloader(self):
         train_dataset = UNetDataset(
-                dataset_mask_path = self.dataset_mask_path,
-                dataset_nonmask_path = self.dataset_nonmask_path,
+                dataset_mask_path = self.dataset_mask_path, 
+                dataset_nonmask_path = self.dataset_nonmask_path, 
                 phase = "train", 
                 criteria = self.criteria,
                 rate = self.rate,
@@ -113,8 +113,8 @@ class UNetSystem(pl.LightningModule):
 
     def val_dataloader(self):
         val_dataset = UNetDataset(
-                dataset_mask_path = self.dataset_mask_path,
-                dataset_nonmask_path = self.dataset_nonmask_path,
+                dataset_mask_path = self.dataset_mask_path, 
+                dataset_nonmask_path = self.dataset_nonmask_path, 
                 phase = "val", 
                 criteria = self.criteria,
                 rate = self.rate,
@@ -128,11 +128,3 @@ class UNetSystem(pl.LightningModule):
                 )
 
         return val_loader
-
-
-
-
-
-
-
-
