@@ -5,26 +5,26 @@ import torch
 from torch.optim.lr_scheduler import StepLR
 from torch.utils.data import DataLoader
 from .utils import defineG, defineD
-from .dataset import Pix2PixDataset
-from .transform import Pix2PixTransform
+from .dataset import Pix2Pix3dDataset
+from .transform import Pix2Pix3dTransform
 from .loss import GANLoss
 from .callbacks import LatestModelCheckpoint, BestModelCheckpoint, SavePredImages
 
 
-class Pix2PixSystem(pl.LightningModule):
+class Pix2Pix3dSystem(pl.LightningModule):
     """ Define pix2pix learning flow. 
     Parameters: 
 
     """
-    def __init__(self, dataset_path=None, criteria=None, log_path=None, l1_lambda=100., lr=0.001, batch_size=3, num_workers=6, G_input_ch=1, G_output_ch=1, G_name="unet_256", D_input_ch=2, D_name="PatchGAN", D_n_layers=3,  ngf=64, gpu_ids=[]):
-        super(Pix2PixSystem, self).__init__()
+    def __init__(self, dataset_path=None, criteria=None, log_path=None, l1_lambda=100., lr=0.001, batch_size=3, num_workers=6, G_input_ch=1, G_output_ch=1, G_name="unet_64", D_input_ch=2, D_name="PatchGAN", D_n_layers=3,  ngf=64, gpu_ids=[]):
+        super(Pix2Pix3dSystem, self).__init__()
 
         self.dataset_path  = dataset_path
         self.criteria      = criteria
         self.callbacks     = [
                             LatestModelCheckpoint(log_path),
                             BestModelCheckpoint(log_path),
-                            SavePredImages(log_path, dataset_path, criteria, Pix2PixTransform(), phase="val")
+                            #SavePredImages(log_path, dataset_path, criteria, Pix2Pix3dTransform(), phase="val")
                                 ]
         self.batch_size    = batch_size
         self.l1_lambda     = l1_lambda
@@ -112,11 +112,11 @@ class Pix2PixSystem(pl.LightningModule):
         return optimizer_list#, scheduler_list
 
     def train_dataloader(self):
-        train_dataset = Pix2PixDataset(
+        train_dataset = Pix2Pix3dDataset(
                             dataset_path = self.dataset_path,
                             phase = "train",
                             criteria = self.criteria,
-                            transforms = Pix2PixTransform()
+                            transforms = Pix2Pix3dTransform()
                             )
 
         train_loader = DataLoader(
@@ -129,11 +129,11 @@ class Pix2PixSystem(pl.LightningModule):
         return train_loader
 
     def val_dataloader(self):
-        val_dataset = Pix2PixDataset(
+        val_dataset = Pix2Pix3dDataset(
                             dataset_path = self.dataset_path,
                             phase = "val",
                             criteria = self.criteria,
-                            transforms = Pix2PixTransform()
+                            transforms = Pix2Pix3dTransform()
                             )
 
         val_loader = DataLoader(

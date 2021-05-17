@@ -1,6 +1,6 @@
 from .preprocessing import *
 
-class Pix2PixTransform():
+class Pix2Pix3dTransform():
     def __init__(self):
         """ Define which transformation you want to to do. 
         If you want to transform images more, just add transformation class to list in Compose as below.
@@ -23,8 +23,8 @@ class Pix2PixTransform():
                     #RandomFlip(),
                     #RandomRotate90(),
                     AdjustDimensionality(
-                        input_ndim  = 3,
-                        target_ndim = 3
+                        input_ndim  = 4,
+                        target_ndim = 4
                         )
                     ]),
                 "val" : Compose([
@@ -34,8 +34,8 @@ class Pix2PixTransform():
                         max_value = 300
                         ),
                     AdjustDimensionality(
-                        input_ndim  = 3,
-                        target_ndim = 3
+                        input_ndim  = 4,
+                        target_ndim = 4
                         )
                     ]),
                 "test" : Compose([
@@ -55,8 +55,8 @@ class Pix2PixTransform():
 
 #Test
 if __name__ == "__main__":
-    t_3 = Pix2PixTransform()
-    t_4 = Pix2PixTransform()
+    t_3 = Pix2Pix3dTransform()
+    t_4 = Pix2Pix3dTransform()
 
     input_file  = "/Users/tanimotoryou/Desktop/c.mha"
     target_file = "/Users/tanimotoryou/Desktop/c.mha"

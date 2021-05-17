@@ -5,7 +5,7 @@ if __name__ == "__main__":
 else:
     from .utils import separateData
 
-class Pix2PixDataset(data.Dataset):
+class Pix2Pix3dDataset(data.Dataset):
     def __init__(self, dataset_path, criteria, transforms, phase="train"):
         self.transforms  = transforms
         self.phase       = phase
@@ -26,10 +26,10 @@ class Pix2PixDataset(data.Dataset):
 #Test
 if __name__ == "__main__":
     import numpy as np
-    from transform import Pix2PixTransform
+    from transform import Pix2Pix3dTransform
     a = np.array(1)
     save_path = Path("/Users/tanimotoryou/Desktop/test")
-    transforms = Pix2PixTransform(4, 4)
+    transforms = Pix2Pix3dTransform(4, 4)
     criteria = {
             "train" : ["00", "01"],
             "val"   : ["02", "03"]
@@ -44,7 +44,7 @@ if __name__ == "__main__":
             np.save(str(s_i), a)
             np.save(str(s_t), a)
 
-    d_t = Pix2PixDataset(str(save_path), criteria, transforms, phase="train")
-    d_v = Pix2PixDataset(str(save_path), criteria, transforms, phase="val")
+    d_t = Pix2Pix3dDataset(str(save_path), criteria, transforms, phase="train")
+    d_v = Pix2Pix3dDataset(str(save_path), criteria, transforms, phase="val")
     print(d_t.__len__(), d_v.__len__())
     print(d_t.__getitem__(3)[0].shape, d_v.__getitem__(5)[1].shape)

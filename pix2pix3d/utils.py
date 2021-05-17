@@ -82,6 +82,10 @@ def defineG(input_ch=1, output_ch=1, ngf=64, G_name="unet_256", norm="batch", us
     elif G_name == "unet_128":
         net = UNetGenerator(input_ch, output_ch, 7, ngf, norm_layer=norm_layer, use_dropout=use_dropout)
 
+    elif G_name == "unet_64":
+        net = UNetGenerator(input_ch, output_ch, 6, ngf, norm_layer=norm_layer, use_dropout=use_dropout)
+
+
     else:
         raise NotImplementedError("Generator model name [{}] is not recognized".format(G_name))
 
@@ -122,7 +126,7 @@ def getNormLayer(norm_type="instance"):
 
     """
     if norm_type == "batch":
-        norm_layer = functools.partial(nn.BatchNorm2d, affine=True, track_running_stats=True)
+        norm_layer = functools.partial(nn.BatchNorm3d, affine=True, track_running_stats=True)
     
     elif norm_type == "instance":
         norm_layer = functools.partial(nn.InstanceNorm2s, affine=False, track_running_stats=False)
@@ -180,7 +184,7 @@ def initWeights(net, init_type="normal", init_gain=0.02):
             if hasattr(m, "bias") and m.bias is not None:
                 init.constant_(m.bias.data, 0.0)
 
-        elif class_name.find("BatchNorm2d") != -1: # BatchNorm layer's weight is not a matrix; only normal distribution applis.
+        elif class_name.find("BatchNorm3d") != -1: # BatchNorm layer's weight is not a matrix; only normal distribution applis.
             init.normal_(m.weight.data, 1.0, init_gain)
             init.constant_(m.bias.data, 0.0)
 

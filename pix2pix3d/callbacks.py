@@ -4,8 +4,8 @@ import cv2
 import numpy as np
 import datetime
 from torch.utils.data import DataLoader
-from .transform import Pix2PixTransform 
-from .dataset import Pix2PixDataset
+from .transform import Pix2Pix3dTransform 
+from .dataset import Pix2Pix3dDataset
 
 class LatestModelCheckpoint(object):
     def __init__(self, save_directory, save_name="latest.pkl"):
@@ -50,7 +50,7 @@ class SavePredImages(object):
 
         self.save_directory   = Path(save_directory)
 
-        dataset = Pix2PixDataset(
+        dataset = Pix2Pix3dDataset(
                     dataset_path = dataset_path,
                     criteria     = criteria,
                     transforms   = transforms,
