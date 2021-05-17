@@ -12,10 +12,8 @@ class UNetTransform():
                         target_min_value = None,
                         target_max_value = None 
                         ),
-                    MixImages(
+                    StackImages(
                         target_numbers = [0, 1],
-                        min_rate       = -0.3,
-                        max_rate       = 0.3
                         ),
                     AdjustDimensionality(
                         input_ndim  = 4,
@@ -30,10 +28,8 @@ class UNetTransform():
                         target_min_value = None,
                         target_max_value = None 
                         ),
-                    MixImages(
+                    StackImages(
                         target_numbers = [0, 1],
-                        mode           = "static",
-                        constant_value = 0.0
                         ),
                     AdjustDimensionality(
                         input_ndim  = 4,
@@ -47,10 +43,8 @@ class UNetTransform():
                         target_min_value = None,
                         target_max_value = None 
                         ),
-                    MixImages(
+                    StackImages(
                         target_numbers = [0, 1],
-                        mode           = "static",
-                        constant_value = 0.0
                         ),
                     AdjustDimensionality(
                         input_ndim  = 5,
