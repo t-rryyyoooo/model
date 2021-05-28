@@ -1,7 +1,7 @@
 from .preprocessing import *
 
 class UNetTransform():
-    def __init__(self):
+    def __init__(self, test_mix_rate=0.0):
 
         self.transforms = {
                 "train" : Compose([
@@ -50,14 +50,12 @@ class UNetTransform():
                     MixImages(
                         target_numbers = [0, 1],
                         mode           = "static",
-                        constant_value = 0.0
+                        constant_value = test_mix_rate
                         ),
                     AdjustDimensionality(
                         input_ndim  = 5,
                         target_ndim = 3
-                        )
-                    ])
- 
+                        )]) 
                 }
 
     def __call__(self, phase, image_list, label):
