@@ -1,4 +1,4 @@
-from .preprocessing import Compose, LoadMultipleData , MinMaxStandardize, AdjustDimensionality
+from .preprocessing import *
 
 class UNetTransform():
     def __init__(self):
@@ -12,9 +12,13 @@ class UNetTransform():
                     #    target_min_value = -300,
                     #    target_max_value = 300
                     #    ),
+                    MakeLabelOnehot(
+                        channel_location = "first",
+                        num_class        = 14
+                        ),
                     AdjustDimensionality(
                         input_ndim  = 4,
-                        target_ndim = 3
+                        target_ndim = 4
                         )
                     ]), 
                 "val" : Compose([
@@ -25,9 +29,13 @@ class UNetTransform():
                     #    target_min_value = -300,
                     #    target_max_value = 300
                     #    ),
+                    MakeLabelOnehot(
+                        channel_location = "first",
+                        num_class        = 14
+                        ),
                     AdjustDimensionality(
                         input_ndim  = 4,
-                        target_ndim = 3
+                        target_ndim = 4
                         )
                     ]),
                 "test" : Compose([

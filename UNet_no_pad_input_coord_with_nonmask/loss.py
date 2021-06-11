@@ -1,5 +1,6 @@
 from torch import nn
 import torch
+from torch.nn import functional as F
 
 class WeightedCategoricalCrossEntropy(nn.Module):
     def __init__(self):
@@ -24,15 +25,11 @@ class WeightedCategoricalCrossEntropy(nn.Module):
 
         return output
 
-class DiceLoss(nn.Module):
+class WholeDiceLoss(nn.Module):
     def __init__(self, weight=None, size_average=True):
-        super(DiceLoss, self).__init__()
+        super(WholeDiceLoss, self).__init__()
 
     def forward(self, inputs, targets, smooth=1):
-        
-        #comment out if your model contains a sigmoid or equivalent activation layer
-        inputs = F.sigmoid(inputs)       
-        
         #flatten label and prediction tensors
         inputs = inputs.view(-1)
         targets = targets.view(-1)
@@ -41,6 +38,35 @@ class DiceLoss(nn.Module):
         dice = (2.*intersection + smooth)/(inputs.sum() + targets.sum() + smooth)  
         
         return 1 - dice
+
+class DICEPerClassLoss(torch.nn.Module):
+    def __init__(self):
+        super(DICEPerClassLoss, self).__init__()
+
+    def forward(self, pred: torch.Tensor, teacher: torch.Tensor, smooth=1.0):
+        """
+        :param pred:
+        :param teacher:
+        :param smooth:
+        :return:
+        """
+        pred, teacher = pred.float(), teacher.float()
+
+        # batch size, classes, width and height
+        axis = list(range(pred.ndim))
+        del axis[0:2]
+
+        intersection = (pred * teacher).sum(axis)
+        pred = pred.contiguous().view(pred.shape[0], pred.shape[1], -1)
+        teacher = teacher.contiguous().view(teacher.shape[0], teacher.shape[1], -1)
+
+        pred_sum = pred.sum((-1,))
+        teacher_sum = teacher.sum((-1,))
+
+        dice_by_classes = (2. * intersection + smooth) / (pred_sum + teacher_sum + smooth)
+
+        return (1. - dice_by_classes).mean()#.mean((-1,)).mean((-1,))
+
 
 class DiceBCELoss(nn.Module):
     def __init__(self, weight=None, size_average=True):

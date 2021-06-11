@@ -101,43 +101,6 @@ def getMinimumValue(image):
     minmax.Execute(image)
     return minmax.GetMinimum()
 
-class DICE():
-    def __init__(self, num_class):
-        self.num_class = num_class
-        """
-        Required : not onehot (after argmax)
-        ex : [[0,1], [2,5],[10,11]]
-        """
-
-    def compute(self, true, pred):
-        eps = 10**-9
-        assert true.size() == pred.size()
-        
-        intersection = (true * pred).sum()
-        union = (true * true).sum() + (pred * pred).sum()
-        dice = (2. * intersection) / (union + eps)
-        """
-        intersection = (true == pred).sum()
-        union = (true != 0).sum() + (pred != 0).sum()
-        dice = 2. * (intersection + eps) / (union + eps)
-        """
-        
-        return dice
-
-    def computePerClass(self, true, pred):
-        DICE = []
-        for x in range(self.num_class):
-            true_part = (true == x).int()
-            pred_part = (pred == x).int()
-            """
-            true_part = true[..., x]
-            pred_part = pred[..., x]
-            """
-            dice = self.compute(true_part, pred_part)
-            DICE.append(dice)
-
-        return DICE
-
 def cropping3D(image, crop_z, crop_x, crop_y):
     """
     image : only 5D tensor
@@ -152,6 +115,22 @@ def cropping3D(image, crop_z, crop_x, crop_y):
     
     return cropped_image
 
+class DICEPerClass():
+    def __init__(self):
+        super(DICEPerClass, self).__init__()
 
+    def __call__(self, pred: torch.Tensor, true: torch.Tensor, smooth=1.0):
 
+        axis = list(range(pred.ndim))
+        del axis[0:2]
+        intersection = (pred * true).sum(axis)
 
+        pred = pred.contiguous().view(pred.shape[0], pred.shape[1], -1)
+        true = true.contiguous().view(true.shape[0], true.shape[1], -1)
+
+        pred_sum = pred.sum((-1,))
+        true_sum = true.sum((-1,))
+
+        dice_per_class = ((2. * intersection + smooth) / (pred_sum + true_sum + smooth)).mean(0)
+
+        return dice_per_class

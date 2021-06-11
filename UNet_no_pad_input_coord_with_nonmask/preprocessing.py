@@ -26,6 +26,22 @@ class Compose(object):
             input_image_or_list, target_image = transform(input_image_or_list, target_image)
         return input_image_or_list, target_image
 
+class MakeLabelOnehot(object):
+    def __init__(self, channel_location="first", num_class=14):
+        if channel_location not in ["first", "last"]:
+            raise NotImplementedError("{} is not supported.".format(channel_location))
+
+        self.channel_location = channel_location
+        self.num_class        = num_class
+
+    def __call__(self, input_array, target_array):
+        s = list(range(target_array.ndim))
+        onehot_target_array = np.eye(self.num_class)[target_array]
+        if self.channel_location == "first":
+            onehot_target_array = onehot_target_array.transpose([target_array.ndim] + s)
+
+        return input_array, onehot_target_array
+
 class LoadMultipleData(object):
     def __init__(self):
         """ Load image (image array) from image path (.npy, .mha).
@@ -263,32 +279,4 @@ class Clip(object):
         clipped_image_array = image_array[slices]
 
         return clipped_image_array
-
-# Test
-if __name__ == "__main__":
-    #gz = "/sandisk/data/Abdomen/case_00/imaging_resampled.nii.gz"
-    #mha = "/sandisk/data/Abdomen/case_00/liver_resampled.mha"
-    #npy = "/sandisk/test.npy"
-    gz = "/Users/tanimotoryou/Documents/lab/imageData/Abdomen/case_00/imaging_resampled.nii.gz"
-    mha = "/Users/tanimotoryou/Documents/lab/imageData/Abdomen/case_00/liver_resampled.mha"
-    npy = "/Users/tanimotoryou/Desktop/test.npy"
-
-    c = Compose([
-            LoadMultipleData(),
-            AdjustDimensionality(input_ndim=[4,5,4], target_ndim=5),
-            MinMaxStandardize(input_min_value=-300, input_max_value=300, target_min_value=-300, target_max_value=300)
-            ])
-
-    l = [npy, npy, npy]
-    a, b = c(l, npy) 
-    for aa in a:
-        print(aa.min())
-        print(aa.max())
-    print(b.min())
-    print(b.max())
- 
-
-
-
-
 

@@ -7,25 +7,31 @@ from .model import UNetModel
 from .dataset import UNetDataset
 from .transform import UNetTransform
 from torch.utils.data import DataLoader
-from .utils import DICE
-from .loss import WeightedCategoricalCrossEntropy
+from .utils import DICEPerClass
+from .callbacks import EveryEpochModelCheckpoint, LatestModelCheckpoint, BestModelCheckpoint
+from .loss import WeightedCategoricalCrossEntropy, DICEPerClassLoss
 
 class UNetSystem(pl.LightningModule):
-    def __init__(self, dataset_mask_path, dataset_nonmask_path, criteria, rate, in_channel_img, in_channel_coord, num_class, learning_rate, batch_size, checkpoint, num_workers, dropout=0.5):
+    def __init__(self, dataset_mask_path, dataset_nonmask_path, log_path, criteria, rate, in_channel_img, in_channel_coord, num_class, learning_rate, batch_size, num_workers, dropout=0.5):
         super(UNetSystem, self).__init__()
-        use_cuda = torch.cuda.is_available() and True
-        self.dataset_mask_path = dataset_mask_path
+        use_cuda                  = torch.cuda.is_available() and True
+        self.dataset_mask_path    = dataset_mask_path
         self.dataset_nonmask_path = dataset_nonmask_path
-        self.num_class = num_class
-        self.model = UNetModel(in_channel_img, in_channel_coord, self.num_class, dropout=dropout)
-        self.criteria = criteria
-        self.rate = rate
-        self.batch_size = batch_size
-        self.learning_rate = learning_rate
-        self.checkpoint = checkpoint
-        self.num_workers = num_workers
-        self.DICE = DICE(self.num_class)
-        self.loss = WeightedCategoricalCrossEntropy()
+        self.num_class            = num_class
+        self.model                = UNetModel(in_channel_img, in_channel_coord, self.num_class, dropout=dropout)
+        self.criteria             = criteria
+        self.rate                 = rate
+        self.batch_size           = batch_size
+        self.learning_rate        = learning_rate
+        self.callbacks            = [
+                EveryEpochModelCheckpoint(log_path),
+                LatestModelCheckpoint(log_path),
+                BestModelCheckpoint(log_path)
+                ]
+        self.num_workers          = num_workers
+        self.DICE                 = DICEPerClass()
+        self.loss                 = DICEPerClassLoss()
+        #self.loss = WeightedCategoricalCrossEntropy()
         #self.loss = nn.CrossEntropyLoss()
 
     def forward(self, x_img, x_coord):
@@ -34,50 +40,25 @@ class UNetSystem(pl.LightningModule):
         return x
 
     def training_step(self, batch, batch_idx):
-        """
-        label : not onehot 
-        """
-        images, label = batch
-        images = [image.float() for image in images]
-        label = label.long()
+        loss, dice = self.calcLossAndDICE(batch)
 
-        pred = self.forward(*images)
-        
-
-        pred_argmax = pred.argmax(dim=1)
-
-        dice = self.DICE.compute(label, pred_argmax)
-        loss = self.loss(pred, label)
-
-        self.log("loss", loss, on_step=False, on_epoch=True)
-        self.log("dice", dice, on_step=False, on_epoch=True)
+        self.logLossAndDICE(loss, dice)
 
         return loss
         
     def validation_step(self, batch, batch_idx):
-        """
-        label : not onehot 
-        """
-        images, label = batch
-        images = [image.float() for image in images]
-        label = label.long()
+        loss, dice = self.calcLossAndDICE(batch)
 
-        pred = self.forward(*images)
-        
-        pred_argmax = pred.argmax(dim=1)
-
-        dice = self.DICE.compute(label, pred_argmax)
-        loss = self.loss(pred, label)
-
-        self.log("val_loss", loss, on_step=False, on_epoch=True)
-        self.log("val_dice", dice, on_step=False, on_epoch=True)
+        self.logLossAndDICE(loss, dice)
 
         return loss
 
     def validation_epoch_end(self, outputs):
         avg = torch.stack([x for x in outputs]).mean()
 
-        self.checkpoint(avg.item(), self.model)
+        for callback in self.callbacks:
+            callback(avg.item(), self.model, self.current_epoch)
+
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
@@ -120,3 +101,36 @@ class UNetSystem(pl.LightningModule):
                 )
 
         return val_loader
+
+    def calculateDICE(self, pred, label):
+        """
+        pred  : Probability
+        label : Onehot
+        """
+        pred_onehot = torch.eye(self.num_class)[pred.argmax(dim=1)].permute((0, 4, 1, 2, 3)).to(self.device)
+
+        dice = self.DICE(pred_onehot, label)
+
+        return dice
+
+    def calcLossAndDICE(self, batch):
+        images, label = batch
+
+        images = [image.float() for image in images]
+        label  = label.float()
+
+        pred = self.forward(*images)
+        
+        loss = self.loss(pred, label)
+        dice = self.calculateDICE(pred, label)
+
+        return loss, dice
+
+    def logLossAndDICE(self, loss, dice):
+        for i in range(len(dice)):
+            self.log("dice_{}".format(i), dice[i], on_step=False, on_epoch=True)
+
+        self.log("loss", loss, on_step=False, on_epoch=True)
+
+
+
