@@ -17,7 +17,7 @@ class UNetTransform():
                         ),
                     AdjustDimensionality(
                         input_ndim  = 4,
-                        target_ndim = 3
+                        target_ndim = 4
                         )
                     ]), 
                 "val" : Compose([
@@ -33,7 +33,7 @@ class UNetTransform():
                         ),
                     AdjustDimensionality(
                         input_ndim  = 4,
-                        target_ndim = 3
+                        target_ndim = 4
                         )
                     ]),
                 "test" : Compose([
