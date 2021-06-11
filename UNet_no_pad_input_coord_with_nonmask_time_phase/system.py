@@ -8,7 +8,7 @@ from .dataset import UNetDataset
 from .transform import UNetTransform
 from torch.utils.data import DataLoader
 from .utils import DICE
-from .loss import WeightedCategoricalCrossEntropy
+from .loss import * 
 from .callbacks import *
 
 class UNetSystem(pl.LightningModule):
