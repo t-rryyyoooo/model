@@ -12,12 +12,12 @@ class UNetTransform():
                         target_min_value = None,
                         target_max_value = None 
                         ),
-                    StackImages(
+                    MixImages(
                         target_numbers = [0, 1],
                         ),
                     AdjustDimensionality(
                         input_ndim  = 4,
-                        target_ndim = 3
+                        target_ndim = 4
                         )
                     ]), 
                 "val" : Compose([
@@ -28,12 +28,12 @@ class UNetTransform():
                         target_min_value = None,
                         target_max_value = None 
                         ),
-                    StackImages(
+                    MixImages(
                         target_numbers = [0, 1],
                         ),
                     AdjustDimensionality(
                         input_ndim  = 4,
-                        target_ndim = 3
+                        target_ndim = 4
                         )
                     ]),
                 "test" : Compose([
