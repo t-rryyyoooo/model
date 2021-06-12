@@ -15,67 +15,68 @@ class UNetModel(nn.Module):
         self.expands = []
 
         # 512 -> 256
-        contract = CreateConvBlock(in_channel, 64, use_bn=use_bn)
+        contract = CreateConvBlock(in_channel, 64, 64, n=2, use_bn=use_bn)
         self.contracts.append(contract)
 
         # 256 -> 128
-        contract = CreateConvBlock(64, 128, use_bn=use_bn)
+        contract = CreateConvBlock(64, 128, 128, n=2, use_bn=use_bn)
         self.contracts.append(contract)
 
         # 128 -> 64
-        contract = CreateConvBlock(128, 256, use_bn=use_bn)
+        contract = CreateConvBlock(128, 256, 256, n=2, use_bn=use_bn)
         self.contracts.append(contract)
 
         # 64 -> 32
-        contract = CreateConvBlock(256, 512, use_bn=use_bn)
+        contract = CreateConvBlock(256, 512, 512, n=2, use_bn=use_bn)
         self.contracts.append(contract)
 
         # 32 -> 16
-        contract = CreateConvBlock(512, 512, use_bn=use_bn)
+        contract = CreateConvBlock(512, 512, 512, n=2, use_bn=use_bn)
         self.contracts.append(contract)
 
         # 16 -> 8
-        contract = CreateConvBlock(512, 512, use_bn=use_bn)
+        contract = CreateConvBlock(512, 512, 512, n=2, use_bn=use_bn)
         self.contracts.append(contract)
 
         # 8 -> 4
-        contract = CreateConvBlock(512, 512, use_bn=use_bn)
+        contract = CreateConvBlock(512, 512, 512, n=2, use_bn=use_bn)
         self.contracts.append(contract)
 
         # 4 -> 2
-        contract = CreateConvBlock(512, 512, use_bn=use_bn)
+        contract = CreateConvBlock(512, 512, 512, n=2, use_bn=use_bn)
         self.contracts.append(contract)
 
-        self.lastContract = CreateConvBlock(512, 512, use_bn=use_bn, apply_pooling=False)
+        # 2 -> 1
+        self.lastContract = CreateConvBlock(512, 512, 512, n=2, use_bn=use_bn, apply_pooling=False)
 
         self.contracts = nn.ModuleList(self.contracts)
 
         if use_dropout:
             self.dropout = nn.Dropout(dropout)
 
-        expand = CreateUpConvBlock(512, 512, 512, use_bn=use_bn)
+        expand = CreateUpConvBlock(512, 512, 512, 512, n=2, use_bn=use_bn)
         self.expands.append(expand)
 
-        expand = CreateUpConvBlock(512, 512, 512, use_bn=use_bn)
+        expand = CreateUpConvBlock(512, 512, 512, 512, n=2, use_bn=use_bn)
         self.expands.append(expand)
 
-        expand = CreateUpConvBlock(512, 512, 512, use_bn=use_bn)
+        expand = CreateUpConvBlock(512, 512, 512, 512, n=2, use_bn=use_bn)
         self.expands.append(expand)
 
-        expand = CreateUpConvBlock(512, 512, 512, use_bn=use_bn)
+        expand = CreateUpConvBlock(512, 512, 512, 512, n=2, use_bn=use_bn)
         self.expands.append(expand)
 
-        expand = CreateUpConvBlock(512, 512, 512, use_bn=use_bn)
+        expand = CreateUpConvBlock(512, 512, 512, 512, n=2, use_bn=use_bn)
         self.expands.append(expand)
 
 
-        expand = CreateUpConvBlock(512, 256, 256, use_bn=use_bn)
+        expand = CreateUpConvBlock(512, 256, 256, 256, n=2, use_bn=use_bn)
         self.expands.append(expand)
          
-        expand = CreateUpConvBlock(256, 128, 128, use_bn=use_bn)
+        expand = CreateUpConvBlock(256, 128, 128, 128, n=2, use_bn=use_bn)
         self.expands.append(expand)
          
-        expand = CreateUpConvBlock(128, 64, 64, use_bn=use_bn)
+        expand = CreateUpConvBlock(128, 64, 64, 64, n=2, use_bn=use_bn)
         self.expands.append(expand)
 
         self.expands = nn.ModuleList(self.expands)
