@@ -12,7 +12,7 @@ from .callbacks import EveryEpochModelCheckpoint, LatestModelCheckpoint, BestMod
 from .loss import WeightedCategoricalCrossEntropy, DICEPerClassLoss
 
 class UNetSystem(pl.LightningModule):
-    def __init__(self, dataset_mask_path, dataset_nonmask_path, log_path, criteria, rate, in_channel_img, in_channel_coord, num_class, learning_rate, batch_size, num_workers, dropout=0.5):
+    def __init__(self, dataset_mask_path, dataset_nonmask_path, log_path, criteria, rate, in_channel_img, in_channel_coord, num_class, learning_rate, batch_size, num_workers, dropout=0.5, ambience=False):
         super(UNetSystem, self).__init__()
         use_cuda                  = torch.cuda.is_available() and True
         self.dataset_mask_path    = dataset_mask_path
@@ -23,6 +23,7 @@ class UNetSystem(pl.LightningModule):
         self.rate                 = rate
         self.batch_size           = batch_size
         self.learning_rate        = learning_rate
+        self.ambience             = ambience
         self.callbacks            = [
                 EveryEpochModelCheckpoint(log_path),
                 LatestModelCheckpoint(log_path),
@@ -108,6 +109,9 @@ class UNetSystem(pl.LightningModule):
         label : Onehot
         """
         pred_onehot = torch.eye(self.num_class)[pred.argmax(dim=1)].permute((0, 4, 1, 2, 3)).to(self.device)
+
+        if self.ambience:
+            label = torch.eye(self.num_class)[label.argmax(dim=1)].permute(0, 4, 1, 2, 3)
 
         dice = self.DICE(pred_onehot, label)
 
