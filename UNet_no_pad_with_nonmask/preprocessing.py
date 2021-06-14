@@ -346,7 +346,7 @@ class ClipValues(object):
 
 
 class MinMaxStandardize(object):
-    def __init__(self, input_min_value=-300.0, input_max_value=300.0, target_min_value=-300, target_max_value=300):
+    def __init__(self, input_min_value=-300.0, input_max_value=300.0, target_min_value=-300, target_max_value=300, standardize_target=True):
         """ Apply the following fomula to each voxel (min max scaling).
 
         V_new = (V_org - min_value) / (max_value- min_value)
@@ -354,13 +354,17 @@ class MinMaxStandardize(object):
             min_value (float) -- Refer above.
             max_value (float) -- Refer above.
         """
-        self.input_min_value  = input_min_value
-        self.input_max_value  = input_max_value
-        self.target_min_value = target_min_value
-        self.target_max_value = target_max_value
+        self.input_min_value    = input_min_value
+        self.input_max_value    = input_max_value
+        self.target_min_value   = target_min_value
+        self.target_max_value   = target_max_value
+        self.standardize_target = standardize_target
 
     def __call__(self, input_image_array_or_list, target_image_array: np.ndarray):
-        translated_target_image_array = self.standardize(target_image_array, self.target_min_value, self.target_max_value)
+        if self.standardize_target:
+            translated_target_image_array = self.standardize(target_image_array, self.target_min_value, self.target_max_value)
+        else:
+            translated_target_image_array = target_image_array
 
         if isinstance(input_image_array_or_list, np.ndarray):
             input_image_array_list = [input_image_array_or_list]

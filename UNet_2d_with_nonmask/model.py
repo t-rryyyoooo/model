@@ -46,7 +46,6 @@ class UNetModel(nn.Module):
         contract = CreateConvBlock(512, 512, 512, n=2, use_bn=use_bn)
         self.contracts.append(contract)
 
-        # 2 -> 1
         self.lastContract = CreateConvBlock(512, 512, 512, n=2, use_bn=use_bn, apply_pooling=False)
 
         self.contracts = nn.ModuleList(self.contracts)
@@ -68,7 +67,6 @@ class UNetModel(nn.Module):
 
         expand = CreateUpConvBlock(512, 512, 512, 512, n=2, use_bn=use_bn)
         self.expands.append(expand)
-
 
         expand = CreateUpConvBlock(512, 256, 256, 256, n=2, use_bn=use_bn)
         self.expands.append(expand)

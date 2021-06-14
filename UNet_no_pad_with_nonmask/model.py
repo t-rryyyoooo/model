@@ -82,6 +82,7 @@ class UNetModel(nn.Module):
     def __init__(self, in_channel, nclasses, dropout=0.5, use_bn=True, use_dropout=True):
         super(UNetModel, self).__init__()
         self.use_dropout = use_dropout
+        self.nclasses    = nclasses
 
 
         self.contracts = []
@@ -116,7 +117,12 @@ class UNetModel(nn.Module):
 
         self.segmentation = nn.Conv3d(64, nclasses, (1, 1, 1), stride=1, dilation=1, padding=(0, 0, 0))
 
-        self.softmax = nn.Softmax(dim=1)
+        if self.nclasses != 1:
+            self.activation = nn.Softmax(dim=1)
+        else:
+            self.activation = nn.Sigmoid()
+
+        
 
     def forward(self, x):
         conv_results = []
@@ -135,7 +141,7 @@ class UNetModel(nn.Module):
             x = expand(x, conv_result)
 
         x = self.segmentation(x)
-        x = self.softmax(x)
+        x = self.activation(x)
 
         return x
 

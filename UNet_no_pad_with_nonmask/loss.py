@@ -13,7 +13,7 @@ class WeightedCategoricalCrossEntropy(nn.Module):
         """
         
         true = true.to(self.device)
-        result = torch.sum(true, dim=[0, 1, 2, 3, 4])
+        result = torch.sum(true, dim=list(range(pred.ndim)))
         result_f = torch.log(result)
         
         weight = result_f / torch.sum(result_f)
