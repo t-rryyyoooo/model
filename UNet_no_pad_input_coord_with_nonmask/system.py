@@ -50,7 +50,7 @@ class UNetSystem(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         loss, dice = self.calcLossAndDICE(batch)
 
-        self.logLossAndDICE(loss, dice)
+        self.logLossAndDICE(loss, dice, for_val=True)
 
         return loss
 
@@ -73,7 +73,7 @@ class UNetSystem(pl.LightningModule):
                 phase = "train", 
                 criteria = self.criteria,
                 rate = self.rate,
-                transform = UNetTransform()
+                transform = UNetTransform(num_class=self.num_class)
                 )
 
         train_loader = DataLoader(
@@ -92,7 +92,7 @@ class UNetSystem(pl.LightningModule):
                 phase = "val", 
                 criteria = self.criteria,
                 rate = self.rate,
-                transform = UNetTransform()
+                transform = UNetTransform(num_class=self.num_class)
                 )
 
         val_loader = DataLoader(
@@ -111,7 +111,7 @@ class UNetSystem(pl.LightningModule):
         pred_onehot = torch.eye(self.num_class)[pred.argmax(dim=1)].permute((0, 4, 1, 2, 3)).to(self.device)
 
         if self.ambience:
-            label = torch.eye(self.num_class)[label.argmax(dim=1)].permute(0, 4, 1, 2, 3)
+            label = torch.eye(self.num_class)[label.argmax(dim=1)].permute(0, 4, 1, 2, 3).to(self.device)
 
         dice = self.DICE(pred_onehot, label)
 
@@ -130,11 +130,20 @@ class UNetSystem(pl.LightningModule):
 
         return loss, dice
 
-    def logLossAndDICE(self, loss, dice):
+    def logLossAndDICE(self, loss, dice, for_val=False):
         for i in range(len(dice)):
-            self.log("dice_{}".format(i), dice[i], on_step=False, on_epoch=True)
+            if for_val:
+                dice_tag = "val_dice_{}".format(i)
+            else:
+                dice_tag = "dice_{}".format(i)
 
-        self.log("loss", loss, on_step=False, on_epoch=True)
+            self.log(dice_tag, dice[i], on_step=False, on_epoch=True)
+
+        if for_val:
+            loss_tag = "val_loss"
+        else:
+            loss_tag = "loss"
+        self.log(loss_tag, loss, on_step=False, on_epoch=True)
 
 
 
