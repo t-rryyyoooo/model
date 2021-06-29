@@ -24,7 +24,7 @@ class UNetSystem(pl.LightningModule):
         self.learning_rate        = learning_rate
         self.num_workers          = num_workers
         self.DICE                 = DICE(self.num_class)
-        self.loss                 = WeightedCategoricalCrossEntropy()
+        self.loss                 = WeightedCategoricalCrossEntropy(weighted=True)
         self.callbacks            = [
                                     LatestModelCheckpoint(log_path),
                                     BestModelCheckpoint(log_path),
