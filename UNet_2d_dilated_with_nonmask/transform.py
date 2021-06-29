@@ -1,10 +1,14 @@
 from .preprocessing import *
 
 class UNetTransform():
-    def __init__(self):
+    def __init__(self, num_class=14):
         self.transforms = {
                 "train" : Compose([
                     LoadMultipleData(),
+                    #MakeLabelOnehot(
+                    #    channel_location = "first",
+                    #    num_class        = num_class 
+                    #    ),
                     AdjustDimensionality(
                         input_ndim  = 3,
                         target_ndim = 3
@@ -13,13 +17,16 @@ class UNetTransform():
 
                 "val" : Compose([
                     LoadMultipleData(),
+                    #MakeLabelOnehot(
+                    #    channel_location = "first",
+                    #    num_class        = num_class 
+                    #    ),
                     AdjustDimensionality(
                         input_ndim  = 3,
                         target_ndim = 3
                         )
                     ]),
                 "test" : Compose([
-                    GetArrayFromImages(),
                     AdjustDimensionality(
                         input_ndim  = 4,
                         target_ndim = 3

@@ -1,7 +1,7 @@
 from .preprocessing import *
 
 class UNetTransform():
-    def __init__(self):
+    def __init__(self, num_class=14):
 
         self.transforms = {
                 "train" : Compose([
@@ -14,7 +14,7 @@ class UNetTransform():
                     #    ),
                     MakeLabelOnehot(
                         channel_location = "first",
-                        num_class        = 14
+                        num_class        = num_class
                         ),
                     AdjustDimensionality(
                         input_ndim  = 4,
@@ -31,7 +31,7 @@ class UNetTransform():
                     #    ),
                     MakeLabelOnehot(
                         channel_location = "first",
-                        num_class        = 14
+                        num_class        = num_class 
                         ),
                     AdjustDimensionality(
                         input_ndim  = 4,

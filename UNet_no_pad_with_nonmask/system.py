@@ -24,7 +24,11 @@ class UNetSystem(pl.LightningModule):
         self.learning_rate        = learning_rate
         self.num_workers          = num_workers
         self.DICE                 = DICE(self.num_class)
-        self.loss                 = WeightedCategoricalCrossEntropy(weighted=True)
+        if self.num_class == 1:
+            #self.loss             = nn.BCEWithLogitsLoss()
+            self.loss             = nn.BCELoss()
+        else:
+            self.loss             = WeightedCategoricalCrossEntropy()
         self.callbacks            = [
                                     LatestModelCheckpoint(log_path),
                                     BestModelCheckpoint(log_path),
@@ -42,13 +46,20 @@ class UNetSystem(pl.LightningModule):
         """
         image, label = batch
         image = image.float()
-        label = label.long()
+        label = label.float()
 
         pred = self.forward(image)
 
         """ Onehot for loss. """
-        pred_argmax = pred.argmax(dim=1)
-        label_onehot = torch.eye(self.num_class)[label].permute((0, 4, 1, 2, 3))
+        if self.num_class == 1:
+            pred = torch.squeeze(pred)
+            pred_argmax = (pred > 0.5).float()
+            label = torch.squeeze(label)
+            label_onehot = label
+        else:
+            pred_argmax = pred.argmax(dim=1)
+
+            label_onehot = torch.eye(self.num_class)[label].permute((0, 4, 1, 2, 3))
 
         dice = self.DICE.compute(label, pred_argmax)
         loss = self.loss(pred, label_onehot)
@@ -64,14 +75,21 @@ class UNetSystem(pl.LightningModule):
         """
         image, label = batch
         image = image.float()
-        label = label.long()
+        label = label.float()
 
         pred = self.forward(image)
         
-
         """ Onehot for loss. """
-        pred_argmax = pred.argmax(dim=1)
-        label_onehot = torch.eye(self.num_class)[label].permute((0, 4, 1, 2, 3))
+        if self.num_class == 1:
+            pred = torch.squeeze(pred)
+            pred_argmax = (pred > 0.5).float()
+            label = torch.squeeze(label)
+            label_onehot = label
+        else:
+            pred_argmax = pred.argmax(dim=1)
+
+            label_onehot = torch.eye(self.num_class)[label].permute((0, 4, 1, 2, 3))
+
 
         dice = self.DICE.compute(label, pred_argmax)
         loss = self.loss(pred, label_onehot)
