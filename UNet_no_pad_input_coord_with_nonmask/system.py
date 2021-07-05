@@ -50,11 +50,7 @@ class UNetSystem(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         loss, dice = self.calcLossAndDICE(batch)
 
-<<<<<<< HEAD
-        self.logLossAndDICE(loss, dice, val=True)
-=======
         self.logLossAndDICE(loss, dice, for_val=True)
->>>>>>> 98707d45b5de7f8299d696cfc5fea5310c0292f1
 
         return loss
 
@@ -134,17 +130,6 @@ class UNetSystem(pl.LightningModule):
 
         return loss, dice
 
-<<<<<<< HEAD
-    def logLossAndDICE(self, loss, dice, val=False):
-        for i in range(len(dice)):
-            if val:
-                dice_tag = "val_dice"
-            else:
-                dice_tag = "dice"
-            self.log("{}_{}".format(dice_tag, i), dice[i], on_step=False, on_epoch=True)
-
-        if val:
-=======
     def logLossAndDICE(self, loss, dice, for_val=False):
         for i in range(len(dice)):
             if for_val:
@@ -155,7 +140,6 @@ class UNetSystem(pl.LightningModule):
             self.log(dice_tag, dice[i], on_step=False, on_epoch=True)
 
         if for_val:
->>>>>>> 98707d45b5de7f8299d696cfc5fea5310c0292f1
             loss_tag = "val_loss"
         else:
             loss_tag = "loss"
