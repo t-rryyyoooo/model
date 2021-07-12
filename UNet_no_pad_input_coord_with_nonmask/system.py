@@ -30,8 +30,8 @@ class UNetSystem(pl.LightningModule):
                 ]
         self.num_workers          = num_workers
         self.DICE                 = DICEPerClass()
-        self.loss                 = DICEPerClassLoss()
-        #self.loss = WeightedCategoricalCrossEntropy()
+        #self.loss                 = DICEPerClassLoss()
+        self.loss = WeightedCategoricalCrossEntropy()
         #self.loss = nn.CrossEntropyLoss()
 
     def forward(self, x_img, x_coord):
@@ -49,7 +49,7 @@ class UNetSystem(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         loss, dice = self.calcLossAndDICE(batch)
 
-        self.logLossAndDICE(loss, dice)
+        self.logLossAndDICE(loss, dice, val=True)
 
         return loss
 
@@ -126,11 +126,19 @@ class UNetSystem(pl.LightningModule):
 
         return loss, dice
 
-    def logLossAndDICE(self, loss, dice):
+    def logLossAndDICE(self, loss, dice, val=False):
         for i in range(len(dice)):
-            self.log("dice_{}".format(i), dice[i], on_step=False, on_epoch=True)
+            if val:
+                dice_tag = "val_dice"
+            else:
+                dice_tag = "dice"
+            self.log("{}_{}".format(dice_tag, i), dice[i], on_step=False, on_epoch=True)
 
-        self.log("loss", loss, on_step=False, on_epoch=True)
+        if val:
+            loss_tag = "val_loss"
+        else:
+            loss_tag = "loss"
+        self.log(loss_tag, loss, on_step=False, on_epoch=True)
 
 
 
