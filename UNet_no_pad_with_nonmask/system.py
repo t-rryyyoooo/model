@@ -7,8 +7,8 @@ from .model import UNetModel
 from .dataset import UNetDataset
 from .transform import UNetTransform
 from torch.utils.data import DataLoader
-from .utils import DICE
-from .loss import WeightedCategoricalCrossEntropy
+from .utils import DICEPerClass
+from .loss import WeightedCategoricalCrossEntropy, DiceBCELoss
 from .callbacks import EveryEpochModelCheckpoint, LatestModelCheckpoint, BestModelCheckpoint
 
 class UNetSystem(pl.LightningModule):
@@ -23,13 +23,13 @@ class UNetSystem(pl.LightningModule):
         self.batch_size           = batch_size
         self.learning_rate        = learning_rate
         self.num_workers          = num_workers
-        self.DICE                 = DICE(self.num_class)
+        self.DICE                 = DICEPerClass()
         if self.num_class == 1:
             #self.loss             = nn.BCEWithLogitsLoss()
-            self.loss             = nn.BCELoss()
+            #self.loss             = nn.BCELoss()
+            self.loss             = DiceBCELoss()
         else:
             self.loss             = WeightedCategoricalCrossEntropy()
-
         self.callbacks            = [
                                     LatestModelCheckpoint(log_path),
                                     BestModelCheckpoint(log_path),
@@ -42,61 +42,16 @@ class UNetSystem(pl.LightningModule):
         return x
 
     def training_step(self, batch, batch_idx):
-        """
-        label : not onehot 
-        """
-        image, label = batch
-        image = image.float()
-        label = label.float()
+        loss, dice = self.calcLossAndDICE(batch)
 
-        pred = self.forward(image)
-
-        """ Onehot for loss. """
-        if self.num_class == 1:
-            pred = torch.squeeze(pred)
-            pred_argmax = (pred > 0.5).float()
-            label = torch.squeeze(label)
-            label_onehot = label
-        else:
-            pred_argmax = pred.argmax(dim=1)
-
-            label_onehot = torch.eye(self.num_class)[label].permute((0, 4, 1, 2, 3))
-
-        dice = self.DICE.compute(label, pred_argmax)
-        loss = self.loss(pred, label_onehot)
-
-        self.log("loss", loss, on_step=False, on_epoch=True)
-        self.log("dice", dice, on_step=False, on_epoch=True)
+        self.logging(loss, dice)
         
         return loss
 
     def validation_step(self, batch, batch_idx):
-        """
-        label : not onehot 
-        """
-        image, label = batch
-        image = image.float()
-        label = label.float()
+        loss, dice = self.calcLossAndDICE(batch)
 
-        pred = self.forward(image)
-        
-        """ Onehot for loss. """
-        if self.num_class == 1:
-            pred = torch.squeeze(pred)
-            pred_argmax = (pred > 0.5).float()
-            label = torch.squeeze(label)
-            label_onehot = label
-        else:
-            pred_argmax = pred.argmax(dim=1)
-
-            label_onehot = torch.eye(self.num_class)[label].permute((0, 4, 1, 2, 3))
-
-
-        dice = self.DICE.compute(label, pred_argmax)
-        loss = self.loss(pred, label_onehot)
-
-        self.log("val_loss", loss, on_step=False, on_epoch=True)
-        self.log("val_dice", dice, on_step=False, on_epoch=True)
+        self.logging(loss, dice, for_val=True)
 
         return loss
 
@@ -118,7 +73,9 @@ class UNetSystem(pl.LightningModule):
                 phase = "train", 
                 criteria = self.criteria,
                 rate = self.rate,
-                transform = UNetTransform()
+                transform = UNetTransform(
+                                num_class = self.num_class
+                                )
                 )
 
         train_loader = DataLoader(
@@ -137,7 +94,9 @@ class UNetSystem(pl.LightningModule):
                 phase = "val", 
                 criteria = self.criteria,
                 rate = self.rate,
-                transform = UNetTransform()
+                transform = UNetTransform(
+                                num_class = self.num_class
+                                )
                 )
 
         val_loader = DataLoader(
@@ -148,10 +107,41 @@ class UNetSystem(pl.LightningModule):
 
         return val_loader
 
+    def calcDICE(self, pred, label):
+        if self.num_class == 1:
+            pred_onehot = (pred > 0.5)
+        else:
+            pred_onehot = torch.eye(self.num_class)[pred.argmax(dim=1)].permute((0, 4, 1, 2, 3)).to(self.device)
 
+        dice = self.DICE(pred_onehot, label)
 
+        return dice
 
+    def calcLossAndDICE(self, batch):
+        image, label = batch
 
+        image = image.float()
+        label = label.float()
 
+        pred = self.forward(image)
 
+        loss = self.loss(pred, label)
+        dice = self.calcDICE(pred, label)
 
+        return loss, dice
+
+    def logging(self, loss, dice, for_val=False):
+        for i in range(len(dice)):
+            if for_val:
+                dice_tag = "val_dice_{}".format(i)
+            else:
+                dice_tag = "dice_{}".format(i)
+
+            self.log(dice_tag, dice[i], on_step=False, on_epoch=True)
+
+        if for_val:
+            loss_tag = "val_loss"
+        else:
+            loss_tag = "loss"
+
+        self.log(loss_tag, loss, on_step=False, on_epoch=True)

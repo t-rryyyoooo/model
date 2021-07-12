@@ -45,7 +45,10 @@ class UNetModel(nn.Module):
 
         self.segmentation = nn.Conv3d(64, nclasses, (1, 1, 1), stride=1, dilation=1, padding=(0, 0, 0))
 
-        self.softmax = nn.Softmax(dim=1)
+        if nclasses!= 1:
+            self.activation = nn.Softmax(dim=1)
+        else:
+            self.activation = nn.Sigmoid()
 
     def forward(self, x_img, x_coord):
         conv_results = []
@@ -66,7 +69,7 @@ class UNetModel(nn.Module):
             x = expand(x, conv_result)
 
         x = self.segmentation(x)
-        x = self.softmax(x)
+        x = self.activation(x)
 
         return x
 

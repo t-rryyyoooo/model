@@ -8,7 +8,6 @@ class WeightedCategoricalCrossEntropy(nn.Module):
         self.weighted = weighted
         self.device   = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
     def forward(self, pred, true):
         """ 
         onehot

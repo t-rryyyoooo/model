@@ -80,6 +80,7 @@ class CreateUpConvBlock(nn.Module):
 
 class UNetModel(nn.Module):
     def __init__(self, in_channel, nclasses, dropout=0.5, use_bn=True, use_dropout=True):
+        print("---------- Use model: Normal 3D U-Net ----------")
         super(UNetModel, self).__init__()
         self.use_dropout = use_dropout
         self.nclasses    = nclasses

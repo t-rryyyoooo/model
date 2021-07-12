@@ -9,7 +9,7 @@ from .transform import UNetTransform
 from torch.utils.data import DataLoader
 from .utils import DICEPerClass
 from .callbacks import EveryEpochModelCheckpoint, LatestModelCheckpoint, BestModelCheckpoint
-from .loss import WeightedCategoricalCrossEntropy, DICEPerClassLoss
+from .loss import * 
 
 class UNetSystem(pl.LightningModule):
     def __init__(self, dataset_mask_path, dataset_nonmask_path, log_path, criteria, rate, in_channel_img, in_channel_coord, num_class, learning_rate, batch_size, num_workers, dropout=0.5, ambience=False):
@@ -31,9 +31,10 @@ class UNetSystem(pl.LightningModule):
                 ]
         self.num_workers          = num_workers
         self.DICE                 = DICEPerClass()
-        #self.loss                 = DICEPerClassLoss()
-        self.loss = WeightedCategoricalCrossEntropy()
-        #self.loss = nn.CrossEntropyLoss()
+        if self.num_class == 1:
+            self.loss = DiceBCELoss()
+        else:
+            self.loss = WeightedCategoricalCrossEntropy()
 
     def forward(self, x_img, x_coord):
         x = self.model(x_img, x_coord)
@@ -114,7 +115,10 @@ class UNetSystem(pl.LightningModule):
         pred  : Probability
         label : Onehot
         """
-        pred_onehot = torch.eye(self.num_class)[pred.argmax(dim=1)].permute((0, 4, 1, 2, 3)).to(self.device)
+        if self.num_class == 1:
+            pred_onehot = (pred > 0.5)
+        else:
+            pred_onehot = torch.eye(self.num_class)[pred.argmax(dim=1)].permute((0, 4, 1, 2, 3)).to(self.device)
 
         if self.ambience:
             label = torch.eye(self.num_class)[label.argmax(dim=1)].permute(0, 4, 1, 2, 3).to(self.device)
@@ -150,6 +154,3 @@ class UNetSystem(pl.LightningModule):
         else:
             loss_tag = "loss"
         self.log(loss_tag, loss, on_step=False, on_epoch=True)
-
-
-
