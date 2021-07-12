@@ -31,8 +31,8 @@ class UNetSystem(pl.LightningModule):
                 ]
         self.num_workers          = num_workers
         self.DICE                 = DICEPerClass()
-        self.loss                 = DICEPerClassLoss()
-        #self.loss = WeightedCategoricalCrossEntropy()
+        #self.loss                 = DICEPerClassLoss()
+        self.loss = WeightedCategoricalCrossEntropy()
         #self.loss = nn.CrossEntropyLoss()
 
     def forward(self, x_img, x_coord):
@@ -73,7 +73,10 @@ class UNetSystem(pl.LightningModule):
                 phase = "train", 
                 criteria = self.criteria,
                 rate = self.rate,
-                transform = UNetTransform(num_class=self.num_class)
+                transform = UNetTransform(
+                                num_class = self.num_class, 
+                                ambience  = self.ambience
+                                )
                 )
 
         train_loader = DataLoader(
@@ -92,7 +95,10 @@ class UNetSystem(pl.LightningModule):
                 phase = "val", 
                 criteria = self.criteria,
                 rate = self.rate,
-                transform = UNetTransform(num_class=self.num_class)
+                transform = UNetTransform(
+                                num_class = self.num_class, 
+                                ambience  = self.ambience
+                                )
                 )
 
         val_loader = DataLoader(

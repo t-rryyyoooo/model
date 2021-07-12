@@ -3,9 +3,11 @@ import torch
 from torch.nn import functional as F
 
 class WeightedCategoricalCrossEntropy(nn.Module):
-    def __init__(self):
+    def __init__(self, weighted=False):
         super(WeightedCategoricalCrossEntropy, self).__init__()
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.weighted = weighted
+        self.device   = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
     def forward(self, pred, true):
         """ 
@@ -14,12 +16,22 @@ class WeightedCategoricalCrossEntropy(nn.Module):
         """
         
         true = true.to(self.device)
-        result = torch.sum(true, dim=[0, 1, 2, 3, 4])
-        result_f = torch.log(result)
+        if self.weighted:
+            result = torch.sum(true, dim=[0, 2, 3, 4])
+            result_f = torch.pow(result, 1./3.)
+            
+            weight = result_f / torch.sum(result_f)
+            weight = weight[None, ...]
+            while weight.ndim < true.ndim:
+                weight = weight[..., None]
+
+        else:
+            result = torch.sum(true, dim=[0, 1, 2, 3, 4])
+            result_f = torch.pow(result, 1./3.)
+            
+            weight = result_f / torch.sum(result_f)
         
-        weight = result_f / torch.sum(result_f)
-        
-        output = ((-1) * torch.sum(1 / (weight + 10**-9) * true * torch.log(pred + 10**-9), axis=1))
+        output = (-1) * torch.sum(1 / (weight + 10**-9) * true * torch.log(pred + 10**-9), axis=1)
 
         output = output.mean()
 
@@ -63,10 +75,12 @@ class DICEPerClassLoss(torch.nn.Module):
         pred_sum = pred.sum((-1,))
         teacher_sum = teacher.sum((-1,))
 
+        num_existence = ((pred_sum + teacher_sum) > 0).any(0).float().sum()
+
         dice_by_classes = (2. * intersection + smooth) / (pred_sum + teacher_sum + smooth)
 
-        return (1. - dice_by_classes).mean()#.mean((-1,)).mean((-1,))
-
+        return (1. - dice_by_classes).sum() / num_existence 
+        #return (1. - dice_by_classes).mean()#.mean((-1,)).mean((-1,))
 
 class DiceBCELoss(nn.Module):
     def __init__(self, weight=None, size_average=True):
@@ -109,3 +123,25 @@ class FocalLoss(nn.Module):
         focal_loss = self.alpha * (1-BCE_EXP)**self.gamma * BCE
                        
         return focal_loss
+
+if __name__ == "__main__":
+    dpcl = DICEPerClassLoss()
+    import numpy as np
+    a = [
+            [[1,1,0,0,0],[1,0,0,0,1],[0,0,0,0,0]],
+            [[0,1,1,0,1],[1,1,1,0,0],[0,0,0,0,0]],
+            [[0,0,0,1,1],[0,0,0,0,0],[0,0,0,0,0]],
+            ]
+
+    b = [
+            [[0,1,0,0,0],[1,1,1,1,1],[0,0,0,0,0]],
+            [[1,0,1,0,1],[0,1,0,0,0],[0,0,0,0,0]],
+            [[0,0,0,1,1],[0,0,0,0,0],[0,0,0,0,0]],
+            ]
+
+    a = torch.from_numpy(np.array(a, dtype=float))
+    b = torch.from_numpy(np.array(b, dtype=float))
+
+    loss = dpcl(a, b)#, smooth=0.)
+
+
