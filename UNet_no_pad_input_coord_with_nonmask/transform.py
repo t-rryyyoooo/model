@@ -1,8 +1,8 @@
 from .preprocessing import *
 
 class UNetTransform():
-    def __init__(self):
-
+    def __init__(self, num_class=14, ambience=False):
+        # TODO ambience flag
         self.transforms = {
                 "train" : Compose([
                     LoadMultipleData(),
@@ -12,10 +12,10 @@ class UNetTransform():
                     #    target_min_value = -300,
                     #    target_max_value = 300
                     #    ),
-                    MakeLabelOnehot(
-                        channel_location = "first",
-                        num_class        = 14
-                        ),
+                    #MakeLabelOnehot(
+                    #    channel_location = "first",
+                    #    num_class        = num_class
+                    #    ),
                     AdjustDimensionality(
                         input_ndim  = 4,
                         target_ndim = 4
@@ -29,10 +29,10 @@ class UNetTransform():
                     #    target_min_value = -300,
                     #    target_max_value = 300
                     #    ),
-                    MakeLabelOnehot(
-                        channel_location = "first",
-                        num_class        = 14
-                        ),
+                    #MakeLabelOnehot(
+                    #    channel_location = "first",
+                    #    num_class        = num_class 
+                    #    ),
                     AdjustDimensionality(
                         input_ndim  = 4,
                         target_ndim = 4

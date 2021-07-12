@@ -424,3 +424,19 @@ class Clip(object):
         clipped_image_array = image_array[slices]
 
         return clipped_image_array
+
+class MakeLabelOnehot(object):
+    def __init__(self, channel_location="first", num_class=14):
+        if channel_location not in ["first", "last"]:
+            raise NotImplementedError("{} is not supported.".format(channel_location))
+
+        self.channel_location = channel_location
+        self.num_class        = num_class
+
+    def __call__(self, input_array, target_array):
+        s = list(range(target_array.ndim))
+        onehot_target_array = np.eye(self.num_class)[target_array]
+        if self.channel_location == "first":
+            onehot_target_array = onehot_target_array.transpose([target_array.ndim] + s)
+
+        return input_array, onehot_target_array

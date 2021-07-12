@@ -1,7 +1,7 @@
 import os
 import SimpleITK as sitk
 import numpy as np
-from random import randrange, uniform
+from random import randrange
 
 class Compose(object):
     def __init__(self, transforms):
@@ -24,83 +24,26 @@ class Compose(object):
     def __call__(self, input_image_or_list, target_image):
         for transform in self.transforms:
             input_image_or_list, target_image = transform(input_image_or_list, target_image)
-
         return input_image_or_list, target_image
 
-class StackImages(object):
-    def __init__(self, target_numbers=None):
-        """ Stack image arrays in channel direction. 
-        [ex] array1 shape : [2,3], array2 shape : [2,3] -> returned array : [2, 2, 3]
-        
-        Parameters: 
-            target_numbers (list) -- The index of images to be stacked in image_array_list.
-            [ex] target_numbers = [0,1] -> np.stack([image_array_list[0], image_array_list[1]])
-        """
-        self.target_numbers = target_numbers
+class MakeLabelOnehot(object):
+    def __init__(self, channel_location="first", num_class=14):
+        if channel_location not in ["first", "last"]:
+            raise NotImplementedError("{} is not supported.".format(channel_location))
 
-    def __call__(self, image_array_list, target_array):
-        indices = np.arange(len(image_array_list))
-        if self.target_numbers is None:
-            target_numbers = indices
+        self.channel_location = channel_location
+        self.num_class        = num_class
+
+    def __call__(self, input_array, target_array):
+        if self.num_class == 1:
+            onehot_target_array = target_array[..., None]
         else:
-            target_numbers = self.target_numbers
+            onehot_target_array = np.eye(self.num_class)[target_array]
+        s = list(range(target_array.ndim))
+        if self.channel_location == "first":
+            onehot_target_array = onehot_target_array.transpose([target_array.ndim] + s)
 
-        rest_indices = np.delete(indices, target_numbers)
-
-        concated_image_array = np.stack(np.array(image_array_list)[target_numbers])
-
-        returned_array_list = [concated_image_array] + list(np.array(image_array_list)[rest_indices])
-
-        if len(returned_array_list) == 1:
-            return returned_array_list[0], target_array
-        else:
-            return returned_array_list, target_array
-
-class MixImages(object):
-    def __init__(self, target_numbers=[0, 1], min_rate=-0.3, max_rate=0.3, constant_value=0.3, mode="dynamic"):
-        """ Mix voxel values of the two images.
-        CT_new = (1 - alpha) * CT_0 + alpha * CT_1
-        Then, alpa is determined by random.uniform(min_rate, max_rate) when mode is 'dynamic'.
-        When mode is 'static', constant_value is substituted for alpha.
-
-        Parameters:
-            target_numbers (list) -- The index of images to be stacked in image_array_list. [ex] target_numbers = [0,1] -> Mix image_array_list[0] and image_array_list[1]
-            min_rate (float)       -- Minimum value of mixing ratio when mode is 'dynamic'.
-            max_rate (float)       -- Maximum value of mixing ratio when mode is 'dynamic'.
-            constant_value (float) -- Mixing ratio when mode is 'static'
-            mode (str)             -- Whether alpha is changed every time this class is called. [dynamic / static]
-        """
-
-        assert len(target_numbers) == 2
-        self.target_numbers = target_numbers
-
-        self.min_rate = min_rate
-        self.max_rate = max_rate
-        if mode not in ["dynamic", "static"]:
-            raise NotImplementedError("{} mode is not supported.".format(mode))
-        else:
-            self.mode = mode
-
-        self.constant_value = constant_value
-
-    def __call__(self, image_array_list, label_array):
-        indices = np.arange(len(image_array_list))
-        rest_indices = np.delete(indices, self.target_numbers)
-
-        if self.mode == "dynamic":
-            alpha = uniform(self.min_rate, self.max_rate)
-
-        elif self.mode == "static":
-            alpha = self.constant_value
-
-        mixed_image_array = (1 - alpha) * image_array_list[self.target_numbers[0]] + alpha * image_array_list[self.target_numbers[1]]
-
-        returned_array_list = [mixed_image_array] + list(np.array(image_array_list)[rest_indices])
-
-        if len(returned_array_list) == 1:
-            return returned_array_list[0], label_array
-        else:
-            return returned_array_list, label_array 
+        return input_array, onehot_target_array
 
 class LoadMultipleData(object):
     def __init__(self):
@@ -165,33 +108,6 @@ class LoadNpy(object):
         if len(input_image_array_list) == 1:
             return input_image_array_list[0], target_image_array
 
-        else:
-            return input_image_array_list, target_image_array
-
-class GetArrayFromImages(object):
-    def __init__(self):
-        """ Translate image to array. 
-        
-        Returns: 
-            np.ndarray, np.ndarray or [np.ndarray, ...], np.ndarray
-        """
-
-    def __call__(self, input_image_or_list, target_image):
-        target_image_array = sitk.GetArrayFromImage(target_image)
-
-        if isinstance(input_image_or_list, sitk.Image):
-            input_image_list = [input_image_or_list]
-        else:
-            input_image_list = input_image_or_list
-
-        input_image_array_list = []
-        for input_image in input_image_list:
-            input_image_array = sitk.GetArrayFromImage(input_image)
-
-            input_image_array_list.append(input_image_array)
-
-        if len(input_image_array_list) == 1:
-            return input_image_array_list[0], target_image_array
         else:
             return input_image_array_list, target_image_array
 
@@ -287,66 +203,8 @@ class AdjustDimensionality(object):
 
         return image_array
 
-class ClipValues(object):
-    def __init__(self, input_min_value=-300.0, input_max_value=300.0, target_min_value=-300, target_max_value=300):
-        """ Clip values in image array from min_value to max_value.
-        if You don't want to clip values, set None.
-
-        """
-        self.input_min_value  = input_min_value
-        self.input_max_value  = input_max_value
-        self.target_min_value = target_min_value
-        self.target_max_value = target_max_value
-
-    def __call__(self, input_array_or_list, target_array: np.ndarray):
-        if self.target_min_value is None and self.target_max_value is None:
-            clipped_target_array = target_array
-        else:
-            clipped_target_array = target_array.clip(
-                                    min = self.target_min_value,
-                                    max = self.target_max_value
-                                    )
-
-        if isinstance(input_array_or_list, np.ndarray):
-            input_array_list = [input_array_or_list]
-            input_min_value        = [self.input_min_value]
-            input_max_value        = [self.input_max_value]
-
-        else:
-            input_array_list = input_array_or_list
-            if isinstance(self.input_min_value, int):
-                input_min_value = [self.input_min_value] * len(input_array_list)
-            else:
-                input_min_value = self.input_min_value
-
-            if isinstance(self.input_max_value, int):
-                input_max_value = [self.input_max_value] * len(input_array_list)
-            else:
-                input_max_value = self.input_max_value
-
-        assert len(input_array_list) == len(input_min_value) == len(input_max_value)
-
-        clipped_input_array_list = []
-        for input_array, min_value, max_value in zip(input_array_list, input_min_value, input_max_value):
-            if min_value is None and max_value is None:
-                clipped_input_array = input_array
-            else:
-                clipped_input_array = input_array.clip(
-                                            min = min_value,
-                                            max = max_value
-                                            )
-
-            clipped_input_array_list.append(clipped_input_array)
-
-
-        if len(clipped_input_array_list) == 1:
-            return clipped_input_array_list[0], clipped_target_array
-        else:
-            return clipped_input_array_list, clipped_target_array
-
-
 class MinMaxStandardize(object):
-    def __init__(self, input_min_value=-300.0, input_max_value=300.0, target_min_value=-300, target_max_value=300):
+    def __init__(self, input_min_value=-300.0, input_max_value=300.0, target_min_value=-300, target_max_value=300, standardize_target=True):
         """ Apply the following fomula to each voxel (min max scaling).
 
         V_new = (V_org - min_value) / (max_value- min_value)
@@ -359,8 +217,13 @@ class MinMaxStandardize(object):
         self.target_min_value = target_min_value
         self.target_max_value = target_max_value
 
+        self.standardize_target = standardize_target
+
     def __call__(self, input_image_array_or_list, target_image_array: np.ndarray):
-        translated_target_image_array = self.standardize(target_image_array, self.target_min_value, self.target_max_value)
+        if self.standardize_target:
+            translated_target_image_array = self.standardize(target_image_array, self.target_min_value, self.target_max_value)
+        else:
+            translated_target_image_array = target_image_array
 
         if isinstance(input_image_array_or_list, np.ndarray):
             input_image_array_list = [input_image_array_or_list]
@@ -399,7 +262,6 @@ class MinMaxStandardize(object):
 
         return image_array
 
-
 class Clip(object):
     def __init__(self, clip_size=[256,256]):
         self.clip_size = clip_size
@@ -421,6 +283,8 @@ class Clip(object):
             slices.append(s)
 
         slices = tuple(slices)
+        print(slices)
         clipped_image_array = image_array[slices]
 
         return clipped_image_array
+

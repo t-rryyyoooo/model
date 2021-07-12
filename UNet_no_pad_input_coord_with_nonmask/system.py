@@ -9,10 +9,10 @@ from .transform import UNetTransform
 from torch.utils.data import DataLoader
 from .utils import DICEPerClass
 from .callbacks import EveryEpochModelCheckpoint, LatestModelCheckpoint, BestModelCheckpoint
-from .loss import WeightedCategoricalCrossEntropy, DICEPerClassLoss
+from .loss import * 
 
 class UNetSystem(pl.LightningModule):
-    def __init__(self, dataset_mask_path, dataset_nonmask_path, log_path, criteria, rate, in_channel_img, in_channel_coord, num_class, learning_rate, batch_size, num_workers, dropout=0.5):
+    def __init__(self, dataset_mask_path, dataset_nonmask_path, log_path, criteria, rate, in_channel_img, in_channel_coord, num_class, learning_rate, batch_size, num_workers, dropout=0.5, ambience=False):
         super(UNetSystem, self).__init__()
         use_cuda                  = torch.cuda.is_available() and True
         self.dataset_mask_path    = dataset_mask_path
@@ -23,6 +23,7 @@ class UNetSystem(pl.LightningModule):
         self.rate                 = rate
         self.batch_size           = batch_size
         self.learning_rate        = learning_rate
+        self.ambience             = ambience
         self.callbacks            = [
                 EveryEpochModelCheckpoint(log_path),
                 LatestModelCheckpoint(log_path),
@@ -30,9 +31,10 @@ class UNetSystem(pl.LightningModule):
                 ]
         self.num_workers          = num_workers
         self.DICE                 = DICEPerClass()
-        #self.loss                 = DICEPerClassLoss()
-        self.loss = WeightedCategoricalCrossEntropy()
-        #self.loss = nn.CrossEntropyLoss()
+        if self.num_class == 1:
+            self.loss = DiceBCELoss()
+        else:
+            self.loss = WeightedCategoricalCrossEntropy()
 
     def forward(self, x_img, x_coord):
         x = self.model(x_img, x_coord)
@@ -49,7 +51,7 @@ class UNetSystem(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         loss, dice = self.calcLossAndDICE(batch)
 
-        self.logLossAndDICE(loss, dice, val=True)
+        self.logLossAndDICE(loss, dice, for_val=True)
 
         return loss
 
@@ -72,7 +74,10 @@ class UNetSystem(pl.LightningModule):
                 phase = "train", 
                 criteria = self.criteria,
                 rate = self.rate,
-                transform = UNetTransform()
+                transform = UNetTransform(
+                                num_class = self.num_class, 
+                                ambience  = self.ambience
+                                )
                 )
 
         train_loader = DataLoader(
@@ -91,7 +96,10 @@ class UNetSystem(pl.LightningModule):
                 phase = "val", 
                 criteria = self.criteria,
                 rate = self.rate,
-                transform = UNetTransform()
+                transform = UNetTransform(
+                                num_class = self.num_class, 
+                                ambience  = self.ambience
+                                )
                 )
 
         val_loader = DataLoader(
@@ -107,7 +115,13 @@ class UNetSystem(pl.LightningModule):
         pred  : Probability
         label : Onehot
         """
-        pred_onehot = torch.eye(self.num_class)[pred.argmax(dim=1)].permute((0, 4, 1, 2, 3)).to(self.device)
+        if self.num_class == 1:
+            pred_onehot = (pred > 0.5)
+        else:
+            pred_onehot = torch.eye(self.num_class)[pred.argmax(dim=1)].permute((0, 4, 1, 2, 3)).to(self.device)
+
+        if self.ambience:
+            label = torch.eye(self.num_class)[label.argmax(dim=1)].permute(0, 4, 1, 2, 3).to(self.device)
 
         dice = self.DICE(pred_onehot, label)
 
@@ -126,19 +140,17 @@ class UNetSystem(pl.LightningModule):
 
         return loss, dice
 
-    def logLossAndDICE(self, loss, dice, val=False):
+    def logLossAndDICE(self, loss, dice, for_val=False):
         for i in range(len(dice)):
-            if val:
-                dice_tag = "val_dice"
+            if for_val:
+                dice_tag = "val_dice_{}".format(i)
             else:
-                dice_tag = "dice"
-            self.log("{}_{}".format(dice_tag, i), dice[i], on_step=False, on_epoch=True)
+                dice_tag = "dice_{}".format(i)
 
-        if val:
+            self.log(dice_tag, dice[i], on_step=False, on_epoch=True)
+
+        if for_val:
             loss_tag = "val_loss"
         else:
             loss_tag = "loss"
         self.log(loss_tag, loss, on_step=False, on_epoch=True)
-
-
-

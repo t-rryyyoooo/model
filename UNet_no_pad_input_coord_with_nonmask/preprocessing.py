@@ -36,7 +36,10 @@ class MakeLabelOnehot(object):
 
     def __call__(self, input_array, target_array):
         s = list(range(target_array.ndim))
-        onehot_target_array = np.eye(self.num_class)[target_array]
+        if self.num_class == 1:
+            onehot_target_array = target_array[..., np.newaxis]
+        else:
+            onehot_target_array = np.eye(self.num_class)[target_array]
         if self.channel_location == "first":
             onehot_target_array = onehot_target_array.transpose([target_array.ndim] + s)
 
