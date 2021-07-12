@@ -23,10 +23,6 @@ class UNetSystem(pl.LightningModule):
         self.batch_size           = batch_size
         self.learning_rate        = learning_rate
         self.num_workers          = num_workers
-<<<<<<< HEAD
-        self.DICE                 = DICE(self.num_class)
-        self.loss                 = WeightedCategoricalCrossEntropy(weighted=True)
-=======
         self.DICE                 = DICEPerClass()
         if self.num_class == 1:
             #self.loss             = nn.BCEWithLogitsLoss()
@@ -34,7 +30,6 @@ class UNetSystem(pl.LightningModule):
             self.loss             = DiceBCELoss()
         else:
             self.loss             = WeightedCategoricalCrossEntropy()
->>>>>>> 63cbc6c4526b3008b7e43f8517f5d5e79f9cb22e
         self.callbacks            = [
                                     LatestModelCheckpoint(log_path),
                                     BestModelCheckpoint(log_path),
