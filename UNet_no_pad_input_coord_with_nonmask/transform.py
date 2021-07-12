@@ -2,7 +2,6 @@ from .preprocessing import *
 
 class UNetTransform():
     def __init__(self, num_class=14):
-
         self.transforms = {
                 "train" : Compose([
                     LoadMultipleData(),
